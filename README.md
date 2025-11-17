@@ -55,11 +55,11 @@ Read the markdown documentation and create custom rules for your specific lintin
 
 ## How/Why to Use This
 
-- ✅ **Automated PR Checks** - Block non-compliant code before it merges
-- ✅ **CI/CD Integration** - Continuous compliance monitoring
-- ✅ **Developer Education** - Learn secure coding patterns
-- ✅ **Audit Preparation** - Document automated controls
-- ✅ **Security Training** - Onboard developers with real examples
+-  **Automated PR Checks** - Block non-compliant code before it merges
+-  **CI/CD Integration** - Continuous compliance monitoring
+-  **Developer Education** - Learn secure coding patterns
+-  **Audit Preparation** - Document automated controls
+-  **Security Training** - Onboard developers with real examples
 
 ## Integration Examples
 
