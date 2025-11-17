@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document contains code-level compliance rules for the **Core Requirements Module** of the PCI Secure Software Standard (PCI SSS). These requirements apply to all types of payment software regardless of function, design, or underlying technology.
+This document contains code-level compliance rules for the Core Requirements Module of the PCI Secure Software Standard (PCI SSS). These requirements apply to all types of payment software regardless of function, design, or underlying technology.
 
 ### About This Module
 
@@ -71,7 +71,7 @@ Unvalidated input is the root cause of injection attacks (SQL injection, XSS, co
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python - SQL Injection vulnerability
@@ -106,7 +106,7 @@ public Transaction getTransaction(String id) {
 }
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```python
 # Python - Parameterized query
@@ -203,7 +203,7 @@ Improper output encoding leads to Cross-Site Scripting (XSS) vulnerabilities, wh
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```javascript
 // React - Dangerous HTML rendering
@@ -226,7 +226,7 @@ def receipt():
     return f"<h1>Receipt for {name}</h1>"  # VIOLATION
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```javascript
 // React - Safe rendering
@@ -308,7 +308,7 @@ Weak passwords are easily compromised through brute force attacks, potentially e
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python - Weak password validation
@@ -340,7 +340,7 @@ public boolean validatePassword(String password) {
 }
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```python
 # Python - Strong password validation
@@ -473,7 +473,7 @@ Admin accounts have elevated privileges that could compromise entire payment sys
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python Flask - Admin access without MFA
@@ -508,7 +508,7 @@ public String adminSettings() {
 }
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```python
 # Python Flask - Admin with MFA requirement
@@ -617,7 +617,7 @@ Older encryption protocols have known vulnerabilities that can be exploited to i
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python - Allowing old TLS versions
@@ -652,7 +652,7 @@ SSLContext sslContext = SSLContext.getInstance("TLS");  // VIOLATION
 sslContext.init(null, null, null);
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```python
 # Python - Enforce TLS 1.2+
@@ -730,7 +730,7 @@ Hardcoded keys in source code can be discovered through code review, decompilati
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python - Hardcoded encryption key
@@ -776,7 +776,7 @@ public class Encryptor {
 }
 ```
 
-##### ✅ Compliant Code
+##### Compliant Code
 
 ```python
 # Python - Key from secure key management
@@ -931,7 +931,7 @@ Logs are often stored insecurely, transmitted to third-party services, or access
 
 #### Examples
 
-##### ❌ Non-Compliant Code
+##### Non-Compliant Code
 
 ```python
 # Python - Logging sensitive data
@@ -948,4 +948,304 @@ def process_payment(card_number, cvv, amount):
 ```
 
 ```javascript
-// JavaScript - Console logging sensitive data
+// Node.js - Console logging sensitive data (Node.js / Browser)
+function handlePayment(req, res) {
+    const { cardNumber, cvv, amount } = req.body;
+    console.log('Received payment request', req.body); // VIOLATION - logs full body
+    console.log(`Charging card ${cardNumber} for ${amount}`); // VIOLATION - logs PAN/partial PAN
+    try {
+        const result = paymentGateway.charge(cardNumber, cvv, amount);
+        console.debug('Gateway response:', result); // VIOLATION - response may include PAN or tokens
+    } catch (err) {
+        console.error('Payment failed:', err); // VIOLATION - stack may contain sensitive details
+    }
+}
+```
+
+```javascript
+# Java - Logging card data
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class PaymentService {
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
+    public void process(String pan, String cvv) {
+        log.info("Processing payment for card {}", pan); // VIOLATION - logs PAN
+        try {
+            String response = gateway.charge(pan, cvv);
+            log.debug("Gateway response: {}", response); // VIOLATION - may contain sensitive fields
+        } catch (Exception e) {
+            log.error("Payment error for card {}: {}", pan, e.getMessage()); // VIOLATION
+        }
+    }
+}
+# Shell script - echoing secrets (CI logs)
+#!/bin/bash
+echo "Using secret key: $SECRET_KEY"  # VIOLATION - writes secret into CI logs
+./run-payment --card "$PAN" --cvv "$CVV"  # VIOLATION - command line args may be captured in logs or process lists
+```
+
+##### Compliant Code
+
+```python
+Python - Redacting sensitive fields in logs
+import logging
+import re
+
+def redact_sensitive(text):
+    # Simple redaction examples; prefer structured logging with field-level redaction
+    text = re.sub(r'\b\d{12,19}\b', '[REDACTED_PAN]', text)
+    text = re.sub(r'\b\d{3,4}\b', '[REDACTED_CVV]', text)
+    return text
+
+def process_payment(card_number, cvv, amount):
+    logging.info("Processing payment request")  # COMPLIANT - no PAN/CVV logged
+    try:
+        result = gateway.charge(card_number, cvv, amount)
+        logging.debug("Gateway response received")  # COMPLIANT - do not log result contents
+    except Exception as e:
+        logging.error("Payment failed: %s", redact_sensitive(str(e)))
+```
+```javascript
+# JavaScript - Structured logging without sensitive fields
+const logger = require('pino')();
+
+function handlePayment(req, res) {
+    // Log only non-sensitive metadata
+    logger.info({ route: '/payments', amount: req.body.amount, userId: req.user.id }, 'Payment request received');
+    try {
+        const result = paymentGateway.charge(req.body.cardNumber, req.body.cvv, req.body.amount);
+        logger.info({ status: 'charged', transactionId: result.id }, 'Payment processed');
+    } catch (err) {
+        logger.error({ err: redactSensitive(err), route: '/payments' }, 'Payment error');
+    }
+}
+
+function redactSensitive(obj) {
+    // Implement field-level redaction for errors and responses
+    if (!obj) return obj;
+    const s = JSON.stringify(obj);
+    return s.replace(/\b\d{12,19}\b/g, '[REDACTED_PAN]').replace(/\b\d{3,4}\b/g, '[REDACTED_CVV]');
+}
+```
+
+#### Remediation Steps
+1. **Never log full PAN, CVV, PIN, or authentication credentials.** Log only non-sensitive metadata
+2. **Use structured logging** and redact sensitive fields at the logging layer
+3.**Mask or truncate sensitive identifiers** if absolutely needed for troubleshooting
+4. **Avoid logging full request/response bodies,** log only necessary fields and metadata.
+5. **Protect logs in transit and at rest** (encryption, access controls).
+6. **Limit log retention** and restrict access to logs to authorized personnel.
+7. **Implement automated scanning of logs** for accidental sensitive data exposure.
+
+#### Automated Check
+
+**Semgrep Rule:**
+```yaml
+rules:
+  - id: pci-sss-core-5.1-logging-pii
+    patterns:
+      - pattern-either:
+          - pattern: logging.*($MSG)
+          - pattern: console.*($ARG)
+          - pattern: log.*($ARG)
+    metavariable-regex:
+      metavariable: $ARG
+      regex: "PAN|card|cvv|pin|password|secret|token|ssn"
+    message: "Potential logging of sensitive payment or credential data. Do not log PAN/CVV/PIN/credentials."
+    severity: ERROR
+```
+
+## 6. Software Updates and Patches
+
+### Rule: PCI-SSS-CORE-6.1 - Secure Update Mechanism Required
+### **Severity:** High
+### **PCI SSS Reference:** Core Requirement 6.1
+
+#### Description
+Payment software must implement a secure, authenticated, and integrity-checked update mechanism. Updates (including patches, components, and dependencies) must be delivered and applied in a way that ensures they originate from a trusted source and have not been tampered with.
+
+#### Rationale
+Compromised or unauthenticated updates are a common vector for supply-chain attacks and can result in malicious code execution within payment environments.
+
+#### Detection Pattern
+- **Languages:** All
+- **Pattern Type:** Configuration + Static Analysis
+- **Looks for:**
+  - Update endpoints without signature verification
+  - Downloads of binary blobs without integrity checks (e.g., missing hash or signature verification)
+  - Use of unpinned dependencies in package manifests
+  - Disabled update verification flags in clients
+
+#### Examples
+
+##### Non-Compliant Code
+```python
+# Python- Downloading and executing update without verification
+import urllib.request, tarfile, os, subprocess
+
+def perform_update(url):
+    urllib.request.urlretrieve(url, 'update.tar.gz')  # VIOLATION - no integrity check
+    with tarfile.open('update.tar.gz') as tar:
+        tar.extractall('/opt/app')  # VIOLATION - executing unverified code
+    subprocess.run(['/opt/app/install.sh'])
+```
+
+```javascript
+// Node.js - Installing packages at runtime without pinning or verification
+const { execSync } = require('child_process');
+
+function updateDependencies() {
+    // VIOLATION - installs latest packages at runtime; no verification or lock file used
+    execSync('npm install some-package@latest', { stdio: 'inherit' });
+}
+```
+
+##### Compliant Code
+
+```python
+# Python - Verify signature and checksum before applying update
+import requests, hashlib, subprocess, os, tempfile
+
+def verify_and_apply(url, sig_url, pubkey_path):
+    # Download artifact and signature
+    artifact = requests.get(url).content
+    sig = requests.get(sig_url).content
+
+    # Verify signature (example uses gpg; production should use robust signing)
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        f.write(artifact)
+        artifact_path = f.name
+
+    subprocess.run(['gpg', '--verify', sig, artifact_path], check=True)  # COMPLIANT
+
+    # Verify checksum (optional)
+    checksum = hashlib.sha256(artifact).hexdigest()
+    # compare checksum to known-good value supplied via signed metadata
+    # apply update after verification
+```
+
+```javascript
+// Node.js - Use lockfiles and CI-signed artifacts
+// CI: verify package-lock.json is present and that packages are installed from lockfile
+// Runtime: verify update signatures or use secure channels to distribution
+```
+
+#### Remediation Steps
+1. **Sign all update packages** and verify signatures before installation (code signing, GPG, or digital signatures)
+2. **Use cryptographic checksums** (SHA-256 or stronger) and check them against signed metadata
+3. **Enforce secure channels** (TLS 1.2+) for update distribution.
+4. **Pin dependencies** and use lockfiles (package-lock, Pipfile.lock, poetry.lock) and verify integrity during install.
+5. **Limit update privileges** updates should be applied by privileged processes with minimal exposure.
+6. **Provide rollback protection** to prevent reverting to vulnerable versions.
+7. **Log and alert** on update failures or unexpected update sources.
+8. **Maintain an inventory of third-party components** and their versions for vulnerability management.
+
+#### Automated Check
+
+**Semgrep Rule:**
+```yaml
+rules:
+  - id: pci-sss-core-6.1-unverified-download
+    patterns:
+      - pattern: urlretrieve($URL)
+      - pattern-either:
+          - pattern: subprocess.run(['curl',...])
+          - pattern: subprocess.run(['wget',...])
+    message: "Update mechanism appears to download and execute code without verification. Ensure updates are signed and verified."
+    severity: ERROR
+```
+---
+
+## 7. Secure Configuration
+
+### Rule: PCI-SSS-CORE-7.1 - Secure Defaults and Least Privilege
+
+**Severity:** High
+**PCI SSS Reference:** Core Requirement 7.1
+
+#### Description
+Software must ship with secure default configurations. Default accounts, sample data, and debug or developer features must be disabled in production. Services and components must run with the least privilege necessary.
+
+#### Rationale
+Insecure defaults and unnecessary privileges increase the attack surface and ease exploitation by attackers.
+
+#### Detection Pattern
+- **Languages/Artifacts:** Configuration files, Dockerfiles, Kubernetes manifests, systemd units, code
+- **Pattern Type:** Static Analysis + Configuration Scanning
+- **Looks for:**
+  - Default credentials in config files
+  - Debug flags enabled (e.g., DEBUG=true)
+  - Services running as root when unnecessary
+  - Sample/test data packaged in production artifacts
+  - Insecure file permissions (world-readable secrets)
+
+#### Examples
+
+##### Non-Compliant Code
+
+```yaml
+# Dockerfile - Running as root and exposing unnecessary ports
+FROM node:14
+WORKDIR /app
+COPY . .
+RUN npm install
+EXPOSE 3000  # VIOLATION - exposes admin port unnecessarily
+CMD ["node", "server.js"]  # VIOLATION - runs as root by default
+```
+
+```yaml
+# application.yml - Default credentials and debug mode enabled
+app:
+  debug: true  # VIOLATION - debug should be disabled in production
+  admin:
+    username: admin
+    password: admin123  # VIOLATION - default credentials
+```
+
+```bash
+# systemd unit - overly permissive file permissions
+[Service]
+User=root  # VIOLATION - runs as root unnecessarily
+ExecStart=/opt/app/bin/start
+```
+
+##### Compliant Code
+
+```dockerfile
+# Dockerfile - drop privileges and use non-root user
+FROM node:18-alpine
+WORKDIR /app
+COPY --chown=node:node . .
+USER node
+RUN npm ci --production
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+```yaml
+# application.yml - secure defaults
+app:
+  debug: false
+  admin:
+    username: ${ADMIN_USERNAME:}  # Require env var- do not provide default
+    password: ${ADMIN_PASSWORD:}
+```
+
+#### Remediation Steps
+1. Disable debug and developer features in production builds.
+2. Remove sample data and default accounts before release; require explicit admin setup.
+3. Enforce least privilege for processes and services — run as non-root where possible.
+4. Require configurable credentials via secure channels (environment, secrets manager) instead of hardcoded defaults.
+5. Harden file permissions (secrets readable only by service account).
+6. Document secure configuration and provide a secure-by-default deployment guide.
+7. Use automated configuration scanning (e.g., CIS Benchmarks, kube-bench, Docker Bench) as part of CI/CD.
+
+#### Automated Check
+YAML / Regex checks:
+  - Detect debug: true, username: admin, password: admin, User=root or EXPOSE of sensitive admin ports.
+  - Scan Dockerfiles for USER root or absence of USER instructions.
+  - Scan manifests for secrets in plaintext.
+
+---
