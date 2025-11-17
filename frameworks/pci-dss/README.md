@@ -91,12 +91,3 @@ Each rule includes:
 
 Found an issue with a rule? Have a better detection pattern? Please open an issue or PR!
 ```
-
-### Step 4: Add Essential Files
-
-**LICENSE**:
-```
-MIT License
-
-Permission is hereby granted, free of charge, to any person obtaining a copy...
-[full MIT license text]
