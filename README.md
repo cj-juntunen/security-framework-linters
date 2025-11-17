@@ -125,4 +125,11 @@ If you find this useful, please star the repo to help others discover it!
 
 ---
 
+![GitHub stars](https://img.shields.io/github/stars/yourusername/repo)
+![GitHub forks](https://img.shields.io/github/forks/yourusername/repo)
+![GitHub issues](https://img.shields.io/github/issues/yourusername/repo)
+![Last commit](https://img.shields.io/github/last-commit/yourusername/repo)
+
+---
+
 Made with ❤️ for the infosec and grc communities!
