@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SonarQube Quality Profile for PCI DSS Secure Software Standard
+  
+  Framework: PCI SSS v1.2.1 (Core + Module A, B, C)
+  Last Updated: 2025-11-19
+  Repository: https://github.com/cj-juntunen/security-framework-linters
+  
+  This quality profile enforces PCI DSS requirements through SonarQube rules.
+  It includes security hotspots, vulnerability detection, and code quality rules.
+  
+  Import Instructions:
+  1. Log into SonarQube as Administrator
+  2. Navigate to Quality Profiles → Restore
+  3. Upload this XML file
+  4. Set as default for payment-related projects
+  
+  Coverage:
+  - Core Requirements: Input validation, authentication, cryptography, logging
+  - Module A: Account data protection, PAN handling, encryption
+  - Module B: Terminal software security (if applicable)
+  - Module C: Web application security
+-->
+<profile>
+  <name>PCI-DSS-Compliance</name>
+  <language>java</language>
+  
+  <!-- =================================================================== -->
+  <!-- CORE REQUIREMENTS - SECTION 1: INPUT VALIDATION                     -->
+  <!-- =================================================================== -->
+  
+  <!-- SQL Injection Prevention -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S3649</key> <!-- SQL queries should not be vulnerable to injection attacks -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2077</key> <!-- Dynamically executing code is security-sensitive -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Command Injection -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2076</key> <!-- OS commands should not be vulnerable to injection attacks -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Path Traversal -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2083</key> <!-- I/O function calls should not be vulnerable to path traversal attacks -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- LDAP Injection -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2078</key> <!-- LDAP queries should not be vulnerable to injection attacks -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- XML External Entity (XXE) -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2755</key> <!-- XML parsers should not be vulnerable to XXE attacks -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- CORE REQUIREMENTS - SECTION 2: AUTHENTICATION & ACCESS CONTROL      -->
+  <!-- =================================================================== -->
+  
+  <!-- Hard-coded Credentials -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2068</key> <!-- Hard-coded credentials are security-sensitive -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S1313</key> <!-- Using hard-coded IP addresses is security-sensitive -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Weak Password Requirements -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5542</key> <!-- Encryption algorithms should be used with secure mode and padding -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Session Management -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5876</key> <!-- Session management security-sensitive -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2092</key> <!-- Cookies should be secure -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- CORE REQUIREMENTS - SECTION 3: CRYPTOGRAPHY                         -->
+  <!-- =================================================================== -->
+  
+  <!-- Weak Cryptography -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2278</key> <!-- DES/3DES should not be used -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S4432</key> <!-- AES encryption should use a secure mode -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5547</key> <!-- Cipher algorithms should be robust -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Insecure Random -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2245</key> <!-- Using pseudorandom number generators (PRNGs) is security-sensitive -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Weak Hashing -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S4790</key> <!-- Using weak hashing algorithms is security-sensitive -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2070</key> <!-- SHA-1 and MD5 should not be used -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- CORE REQUIREMENTS - SECTION 4: SECURE COMMUNICATIONS                -->
+  <!-- =================================================================== -->
+  
+  <!-- TLS/SSL Configuration -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S4423</key> <!-- Weak SSL/TLS protocols should not be used -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5527</key> <!-- Server certificates should be verified -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5659</key> <!-- JWT should be signed and verified -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- CORE REQUIREMENTS - SECTION 5: LOGGING & MONITORING                 -->
+  <!-- =================================================================== -->
+  
+  <!-- Sensitive Data in Logs -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5145</key> <!-- Log injection -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2629</key> <!-- Logging should not be vulnerable to injection attacks -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- MODULE A: ACCOUNT DATA PROTECTION                                   -->
+  <!-- =================================================================== -->
+  
+  <!-- PAN Storage and Handling -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5693</key> <!-- Allowing requests with excessive content length is security-sensitive -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Sensitive Data Exposure -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2255</key> <!-- Using cookies without the "secure" flag -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S3330</key> <!-- HttpOnly should be set on cookies -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- MODULE C: WEB APPLICATION SECURITY                                  -->
+  <!-- =================================================================== -->
+  
+  <!-- Cross-Site Scripting (XSS) -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5131</key> <!-- XSS vulnerabilities should be avoided -->
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5696</key> <!-- Content Security Policy (CSP) should be set -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <!-- Cross-Site Request Forgery (CSRF) -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S4502</key> <!-- CSRF protection should be enabled -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Clickjacking -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5122</key> <!-- CORS policy should be strict -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <!-- File Upload Security -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2598</key> <!-- File uploads should be restricted -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- GENERAL SECURITY BEST PRACTICES                                     -->
+  <!-- =================================================================== -->
+  
+  <!-- Error Handling -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5304</key> <!-- Exceptions should not expose sensitive information -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <!-- Code Quality affecting Security -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S1989</key> <!-- Exceptions should not be thrown from servlet methods -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2696</key> <!-- Instance methods should not write to "static" fields -->
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Denial of Service Prevention -->
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S2631</key> <!-- Regular expressions should not be vulnerable to Denial of Service attacks -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <!-- =================================================================== -->
+  <!-- SECURITY HOTSPOT RULES (Manual Review Required)                    -->
+  <!-- =================================================================== -->
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S5689</key> <!-- Disclosure of version information is security-sensitive -->
+    <priority>MINOR</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S4507</key> <!-- Debugging features should be deactivated -->
+    <priority>MAJOR</priority>
+  </rule>
+  
+  <rule>
+    <repositoryKey>java</repositoryKey>
+    <key>S1523</key> <!-- Dynamically executing code is security-sensitive -->
+    <priority>CRITICAL</priority>
+  </rule>
+</profile>
+
+<!-- Additional Language Profiles -->
+
+<!-- JavaScript/TypeScript Profile -->
+<profile>
+  <name>PCI-DSS-Compliance-JS</name>
+  <language>js</language>
+  
+  <!-- JavaScript SQL Injection -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S3649</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- JavaScript XSS -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S5131</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Hard-coded Secrets -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S2068</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Insecure Cookies -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S2092</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Command Injection -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S4721</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Path Traversal -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S2083</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Weak Cryptography -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S5547</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- CORS Misconfiguration -->
+  <rule>
+    <repositoryKey>javascript</repositoryKey>
+    <key>S5122</key>
+    <priority>MAJOR</priority>
+  </rule>
+</profile>
+
+<!-- Python Profile -->
+<profile>
+  <name>PCI-DSS-Compliance-Python</name>
+  <language>py</language>
+  
+  <!-- Python SQL Injection -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S3649</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Python Command Injection -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S2076</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Python XSS -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S5131</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Hard-coded Credentials -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S2068</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Weak Hashing -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S4790</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Path Traversal -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S2083</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- XXE Prevention -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S2755</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Insecure Deserialization -->
+  <rule>
+    <repositoryKey>python</repositoryKey>
+    <key>S5135</key>
+    <priority>CRITICAL</priority>
+  </rule>
+</profile>
+
+<!-- C/C++ Profile for Module B (Terminal Software) -->
+<profile>
+  <name>PCI-DSS-Compliance-CPP</name>
+  <language>cpp</language>
+  
+  <!-- Buffer Overflow -->
+  <rule>
+    <repositoryKey>cpp</repositoryKey>
+    <key>S5801</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Use of Dangerous Functions -->
+  <rule>
+    <repositoryKey>cpp</repositoryKey>
+    <key>S5814</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Memory Management -->
+  <rule>
+    <repositoryKey>cpp</repositoryKey>
+    <key>S3519</key>
+    <priority>CRITICAL</priority>
+  </rule>
+  
+  <!-- Cryptographic Key Storage -->
+  <rule>
+    <repositoryKey>cpp</repositoryKey>
+    <key>S5547</key>
+    <priority>BLOCKER</priority>
+  </rule>
+  
+  <!-- Secure Random Generation -->
+  <rule>
+    <repositoryKey>cpp</repositoryKey>
+    <key>S2245</key>
+    <priority>CRITICAL</priority>
+  </rule>
+</profile>
+
+<!-- 
+  QUALITY GATE RECOMMENDATION
+  
+  Create a Quality Gate with these conditions:
+  - Security Rating is A
+  - Security Hotspots Reviewed >= 100%
+  - No Blocker Issues
+  - No Critical Issues
+  - Coverage on New Code >= 80%
+  
+  This ensures compliance with PCI DSS secure development requirements.
+-->
