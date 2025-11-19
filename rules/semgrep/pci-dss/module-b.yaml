@@ -1,0 +1,912 @@
+rules:
+  # ============================================================================
+  # PCI DSS Secure Software Standard - Module B: Terminal Software
+  # Semgrep Rule Configuration
+  # ============================================================================
+  # Version: 1.0.0
+  # Framework: PCI SSS v1.2.1
+  # Module: Module B - Terminal Software Requirements
+  # Last Updated: 2024-11-19
+  # Repository: https://github.com/cj-juntunen/compliance-rules
+  # ============================================================================
+  # 
+  # IMPORTANT: Module B requirements primarily apply to C/C++ terminal software.
+  # Many requirements cannot be fully validated through static analysis as they
+  # require hardware security features (secure elements, tamper detection, etc.)
+  # 
+  # These rules focus on software-detectable patterns in terminal applications.
+  # ============================================================================
+
+  # ============================================================================
+  # B1. PIN SECURITY
+  # ============================================================================
+
+  - id: pci-sss-b1.1-pin-in-application-memory
+    patterns:
+      - pattern-either:
+          - pattern: |
+              char $PIN[...];
+              ...
+              scanf(..., $PIN);
+          - pattern: |
+              std::string $PIN;
+              ...
+              std::cin >> $PIN;
+          - pattern: |
+              String $PIN = ...;
+      - metavariable-regex:
+          metavariable: $PIN
+          regex: ".*pin.*"
+    message: |
+      CRITICAL VIOLATION: PIN appears to be handled in application-level code.
+      
+      PCI SSS Module B Requirement B1.1: PIN must NEVER exist in application 
+      memory. PIN entry and encryption must occur entirely within a secure 
+      cryptographic device (SCD).
+      
+      Action Required:
+      1. Remove all PIN handling from application code
+      2. Use secure hardware module for PIN entry and encryption
+      3. Application should only receive encrypted PIN blocks
+      
+      This is a critical violation requiring immediate remediation.
+    severity: ERROR
+    languages: [c, cpp, java]
+    metadata:
+      category: security
+      subcategory: pin-security
+      pci-dss: "3.2.3"
+      framework: PCI-SSS
+      requirement: "B1.1"
+      confidence: MEDIUM
+      impact: CRITICAL
+
+  - id: pci-sss-b1.1-pin-plaintext-transmission
+    patterns:
+      - pattern-either:
+          - pattern: |
+              send(..., $PIN, ...);
+          - pattern: |
+              write(..., $PIN, ...);
+          - pattern: |
+              transmit($PIN);
+      - metavariable-regex:
+          metavariable: $PIN
+          regex: ".*pin.*"
+    message: |
+      CRITICAL: Potential plaintext PIN transmission detected.
+      
+      PIN must be encrypted within secure hardware before any transmission.
+      Application should only handle encrypted PIN blocks.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      pci-dss: "3.2.3"
+      framework: PCI-SSS
+      requirement: "B1.1"
+
+  - id: pci-sss-b1.1-weak-pin-encryption
+    patterns:
+      - pattern-either:
+          - pattern: |
+              for (...) {
+                  $PIN[$I] ^= $MASK;
+              }
+          - pattern: |
+              $ENCRYPTED = $PIN ^ $KEY;
+    message: |
+      CRITICAL: Weak PIN encryption detected (XOR or simple masking).
+      
+      PCI SSS B1.1 requires:
+      - TDES or AES encryption
+      - DUKPT key management
+      - ISO 9564 PIN block format
+      - Encryption in secure hardware only
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      pci-dss: "3.2.3"
+      framework: PCI-SSS
+      requirement: "B1.1"
+
+  - id: pci-sss-b1.2-pin-entry-without-validation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              void accept_pin() {
+                  ...
+              }
+          - pattern: |
+              int process_pin_entry() {
+                  ...
+              }
+      - pattern-not: |
+          ... check_tamper ...
+      - pattern-not: |
+          ... validate_device ...
+      - pattern-not: |
+          ... verify_security ...
+    message: |
+      PIN entry function without apparent security validation.
+      
+      PCI SSS B1.2 requires validation before PIN acceptance:
+      1. Verify PED (PIN Entry Device) integrity
+      2. Check tamper detection status
+      3. Validate device security state
+      4. Implement timeout for PIN entry
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      pci-dss: "9.9"
+      framework: PCI-SSS
+      requirement: "B1.2"
+
+  - id: pci-sss-b1.2-missing-pin-timeout
+    patterns:
+      - pattern-either:
+          - pattern: |
+              void accept_pin() {
+                  ...
+                  read_pin_digit();
+                  ...
+              }
+      - pattern-not: |
+          ... timeout ...
+      - pattern-not: |
+          ... timer ...
+    message: |
+      PIN entry without apparent timeout implementation.
+      
+      PCI SSS B1.2: Implement timeout for PIN entry (typically 30-90 seconds).
+      
+      Timeout prevents:
+      - Shoulder surfing attacks
+      - Extended tampering attempts
+      - Unattended terminal exploitation
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B1.2"
+
+  # ============================================================================
+  # B2. SECURE BOOT AND FIRMWARE INTEGRITY
+  # ============================================================================
+
+  - id: pci-sss-b2.1-no-signature-verification
+    patterns:
+      - pattern-either:
+          - pattern: |
+              void boot_firmware() {
+                  load_firmware($ADDRESS);
+                  execute_firmware($ADDRESS);
+              }
+          - pattern: |
+              int main() {
+                  ...
+                  jump_to_firmware(...);
+                  ...
+              }
+      - pattern-not: |
+          ... verify_signature ...
+      - pattern-not: |
+          ... check_signature ...
+      - pattern-not: |
+          ... validate_firmware ...
+    message: |
+      CRITICAL: Firmware execution without signature verification.
+      
+      PCI SSS B2.1 requires cryptographic signature verification before 
+      executing any firmware.
+      
+      Implementation required:
+      1. Sign firmware with RSA-2048 or ECDSA-P256
+      2. Verify signature using hardware-backed public key
+      3. Halt boot if verification fails
+      4. Log all boot verification attempts
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-494: Download of Code Without Integrity Check"
+      framework: PCI-SSS
+      requirement: "B2.1"
+      impact: CRITICAL
+
+  - id: pci-sss-b2.1-weak-signature-algorithm
+    patterns:
+      - pattern-either:
+          - pattern: |
+              uint32_t checksum = crc32($FIRMWARE);
+          - pattern: |
+              $HASH = md5($FIRMWARE);
+          - pattern: |
+              calculate_checksum($FIRMWARE);
+    message: |
+      Weak signature algorithm detected (CRC32, MD5, simple checksum).
+      
+      PCI SSS B2.1 requires cryptographic signatures:
+      - RSA-2048 with SHA-256 minimum
+      - OR ECDSA-P256 with SHA-256
+      
+      CRC/MD5/checksums are not cryptographic and can be forged.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-327"
+      framework: PCI-SSS
+      requirement: "B2.1"
+
+  - id: pci-sss-b2.1-optional-signature-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($DEBUG_MODE) {
+                  ...
+              } else {
+                  verify_signature();
+              }
+          - pattern: |
+              if ($CONFIG.verify_firmware) {
+                  verify_signature();
+              }
+    message: |
+      CRITICAL: Optional or bypassable signature verification.
+      
+      Firmware signature verification must be MANDATORY and cannot be bypassed 
+      through configuration, debug mode, or any other mechanism.
+      
+      PCI SSS B2.1: Signature verification must always execute.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B2.1"
+      confidence: HIGH
+
+  - id: pci-sss-b2.1-continue-after-signature-failure
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if (!verify_signature()) {
+                  log_warning("Signature invalid");
+              }
+              execute_firmware();
+          - pattern: |
+              int result = verify_signature();
+              if (result != 0) {
+                  printf("Warning: signature failed\n");
+              }
+              ...
+              run_firmware();
+    message: |
+      CRITICAL: Firmware execution continues after signature verification failure.
+      
+      PCI SSS B2.1: Device must HALT if signature verification fails.
+      Never execute unverified firmware.
+      
+      Fix: Enter safe mode or lockdown state on verification failure.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B2.1"
+      confidence: HIGH
+
+  # ============================================================================
+  # B3. ANTI-TAMPERING CONTROLS
+  # ============================================================================
+
+  - id: pci-sss-b3.1-inadequate-tamper-response
+    patterns:
+      - pattern-either:
+          - pattern: |
+              void tamper_interrupt() {
+                  log_event("Tamper detected");
+              }
+          - pattern: |
+              void on_tamper() {
+                  set_flag(TAMPER_FLAG);
+              }
+      - pattern-not: |
+          ... zeroize ...
+      - pattern-not: |
+          ... clear_keys ...
+    message: |
+      CRITICAL: Inadequate tamper response - keys not zeroized.
+      
+      PCI SSS B3.1 requires immediate zeroization of ALL cryptographic keys 
+      upon tamper detection.
+      
+      Required actions:
+      1. Zeroize all keys in memory
+      2. Zeroize keys in secure element
+      3. Disable all secure operations
+      4. Set persistent tamper flag
+      5. Require service to restore
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B3.1"
+      impact: CRITICAL
+
+  - id: pci-sss-b3.1-missing-tamper-handler
+    patterns:
+      - pattern-either:
+          - pattern: |
+              int main() {
+                  ...
+              }
+          - pattern: |
+              void init_system() {
+                  ...
+              }
+      - pattern-not: |
+          ... tamper ...
+      - pattern-not: |
+          ... intrusion ...
+    message: |
+      No tamper detection handler found in terminal software.
+      
+      PCI SSS B3.1: Terminal software must monitor tamper detection sensors and 
+      respond immediately to tamper events.
+      
+      Required:
+      - Tamper detection interrupt handler
+      - Periodic polling of tamper sensors
+      - Response to all tamper conditions
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B3.1"
+
+  - id: pci-sss-b3.1-bypassable-tamper-detection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($DEBUG_MODE) {
+                  return TAMPER_OK;
+              }
+          - pattern: |
+              #ifdef DEBUG
+              #define CHECK_TAMPER() (0)
+              #endif
+    message: |
+      CRITICAL: Tamper detection can be bypassed in debug mode.
+      
+      Tamper detection must NEVER be bypassable, even in debug/test builds.
+      
+      Use hardware tamper detection that cannot be disabled by software.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B3.1"
+
+  - id: pci-sss-b3.1-incomplete-key-zeroization
+    patterns:
+      - pattern-either:
+          - pattern: |
+              memset($KEYS, 0, sizeof($KEYS));
+          - pattern: |
+              $KEY = 0;
+      - pattern-not: |
+          ... volatile ...
+    message: |
+      Non-volatile key zeroization detected.
+      
+      Compiler may optimize away non-volatile memory clearing.
+      
+      Fix: Use volatile pointers for security-critical zeroization:
+        volatile uint8_t* p = key;
+        while (len--) *p++ = 0;
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-14: Compiler Removal of Code to Clear Buffers"
+      framework: PCI-SSS
+      requirement: "B3.1"
+
+  # ============================================================================
+  # B4. CRYPTOGRAPHIC KEY MANAGEMENT
+  # ============================================================================
+
+  - id: pci-sss-b4.1-key-in-application-memory
+    patterns:
+      - pattern-either:
+          - pattern: |
+              uint8_t master_key[$SIZE] = {...};
+          - pattern: |
+              const unsigned char key[] = {...};
+          - pattern: |
+              static uint8_t encryption_key[] = {...};
+    message: |
+      CRITICAL: Cryptographic key in application memory.
+      
+      PCI SSS B4.1: Terminal cryptographic keys must be stored in secure element 
+      or HSM, never in application-accessible memory.
+      
+      Application should only use key handles/references, never actual key material.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-321: Use of Hard-coded Cryptographic Key"
+      pci-dss: "3.6.1"
+      framework: PCI-SSS
+      requirement: "B4.1"
+      impact: CRITICAL
+
+  - id: pci-sss-b4.1-insecure-key-loading
+    patterns:
+      - pattern-either:
+          - pattern: |
+              load_key($KEY_DATA);
+          - pattern: |
+              memcpy($KEY_BUFFER, $SOURCE, $SIZE);
+      - pattern-not: |
+          ... authenticate ...
+      - pattern-not: |
+          ... verify_signature ...
+      - pattern-not: |
+          ... tr34 ...
+    message: |
+      Key loading without authentication detected.
+      
+      PCI SSS B4.1: Key loading must use authenticated protocols (TR-34, TR-31).
+      
+      Required:
+      1. Mutual authentication (terminal and key distribution host)
+      2. Encrypted key transport
+      3. Key check value verification
+      4. Audit logging
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      pci-dss: "3.6.2"
+      framework: PCI-SSS
+      requirement: "B4.1"
+
+  - id: pci-sss-b4.1-key-not-in-secure-element
+    patterns:
+      - pattern-either:
+          - pattern: |
+              encrypt($DATA, $KEY);
+          - pattern: |
+              decrypt($DATA, $KEY);
+      - pattern-not: |
+          ... se_encrypt ...
+      - pattern-not: |
+          ... hsm_encrypt ...
+      - pattern-not: |
+          ... secure_element ...
+    message: |
+      Encryption operation without apparent secure element usage.
+      
+      PCI SSS B4.1: Keys must reside in secure element. Encryption should occur 
+      in secure hardware, with application only passing data in/out.
+      
+      Use: se_encrypt(key_handle, data) instead of encrypt(data, key)
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B4.1"
+
+  # ============================================================================
+  # B5. TERMINAL AUTHENTICATION
+  # ============================================================================
+
+  - id: pci-sss-b5.1-static-terminal-id
+    patterns:
+      - pattern-either:
+          - pattern: |
+              #define TERMINAL_ID "..."
+          - pattern: |
+              const char* terminal_id = "...";
+    message: |
+      Static terminal ID detected.
+      
+      PCI SSS B5.1: Terminal authentication should use cryptographic proof of 
+      identity (certificates), not just static IDs.
+      
+      Static IDs can be cloned. Use device certificates and challenge-response.
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B5.1"
+
+  - id: pci-sss-b5.1-password-based-terminal-auth
+    patterns:
+      - pattern-either:
+          - pattern: |
+              send_auth_request($TERMINAL_ID, $PASSWORD);
+          - pattern: |
+              authenticate($TID, $PWD);
+    message: |
+      Password-based terminal authentication detected.
+      
+      PCI SSS B5.1: Use certificate-based authentication for terminals.
+      
+      Passwords can be compromised/shared. Device certificates provide stronger 
+      authentication and are tied to specific hardware.
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B5.1"
+
+  # ============================================================================
+  # B6. SECURE COMMUNICATIONS
+  # ============================================================================
+
+  - id: pci-sss-b6.1-disabled-certificate-verification
+    patterns:
+      - pattern-either:
+          - pattern: |
+              ssl_set_verify(&$CTX, SSL_VERIFY_NONE);
+          - pattern: |
+              $CTX.check_hostname = false;
+          - pattern: |
+              SSL_CTX_set_verify($CTX, SSL_VERIFY_NONE, NULL);
+    message: |
+      CRITICAL: TLS certificate verification disabled.
+      
+      PCI SSS B6.1: Terminals must verify server certificates to prevent MITM attacks.
+      
+      Enable certificate verification and implement certificate pinning for 
+      known payment network hosts.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      pci-dss: "4.2.1"
+      framework: PCI-SSS
+      requirement: "B6.1"
+
+  - id: pci-sss-b6.1-weak-cipher-suites
+    patterns:
+      - pattern-either:
+          - pattern: |
+              SSL_CTX_set_cipher_list($CTX, "... DES ...");
+          - pattern: |
+              SSL_CTX_set_cipher_list($CTX, "... RC4 ...");
+          - pattern: |
+              SSL_CTX_set_cipher_list($CTX, "... MD5 ...");
+          - pattern: |
+              SSL_CTX_set_cipher_list($CTX, "... NULL ...");
+    message: |
+      Weak cipher suite configuration detected.
+      
+      PCI SSS B6.1: Use only strong cipher suites (AES-256, AES-128).
+      
+      Prohibited: DES, 3DES, RC4, MD5, NULL ciphers
+      Required: AES-GCM or AES-CBC with strong key exchange
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-327"
+      pci-dss: "4.2.1"
+      framework: PCI-SSS
+      requirement: "B6.1"
+
+  - id: pci-sss-b6.1-no-certificate-pinning
+    patterns:
+      - pattern-either:
+          - pattern: |
+              SSL_connect($SSL);
+          - pattern: |
+              tls_connect($HOST, $PORT);
+      - pattern-not: |
+          ... pin ...
+      - pattern-not: |
+          ... verify_certificate_fingerprint ...
+    message: |
+      Payment network connection without certificate pinning.
+      
+      Best practice for terminals: Implement certificate pinning for known 
+      payment hosts to prevent MITM with fraudulent certificates.
+    severity: INFO
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B6.1"
+      note: "Best practice recommendation"
+
+  # ============================================================================
+  # B7. TERMINAL CONFIGURATION SECURITY
+  # ============================================================================
+
+  - id: pci-sss-b7.1-plaintext-config-file
+    patterns:
+      - pattern-either:
+          - pattern: |
+              FILE* $F = fopen("config.txt", "r");
+          - pattern: |
+              read_config("terminal.conf");
+      - pattern-not: |
+          ... decrypt ...
+      - pattern-not: |
+          ... verify_integrity ...
+    message: |
+      Plaintext configuration file detected.
+      
+      PCI SSS B7.1: Terminal configuration must be integrity-protected and/or 
+      encrypted.
+      
+      Configuration should:
+      1. Be encrypted with key from secure element
+      2. Include HMAC for integrity verification
+      3. Require authentication for changes
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B7.1"
+
+  - id: pci-sss-b7.1-no-config-integrity-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              load_config($FILE);
+          - pattern: |
+              read_configuration();
+      - pattern-not: |
+          ... hmac ...
+      - pattern-not: |
+          ... checksum ...
+      - pattern-not: |
+          ... integrity ...
+    message: |
+      Configuration loaded without integrity verification.
+      
+      PCI SSS B7.1: Verify configuration integrity before use to detect tampering.
+      
+      Use HMAC-SHA256 to protect configuration integrity.
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B7.1"
+
+  - id: pci-sss-b7.1-unauthenticated-config-update
+    patterns:
+      - pattern-either:
+          - pattern: |
+              void update_config($NEW_CONFIG) {
+                  save_config($NEW_CONFIG);
+              }
+          - pattern: |
+              write_configuration($DATA);
+      - pattern-not: |
+          ... authenticate ...
+      - pattern-not: |
+          ... verify_signature ...
+    message: |
+      Configuration update without authentication.
+      
+      PCI SSS B7.1: Configuration changes must require authentication.
+      
+      Implement:
+      1. Administrator signature verification
+      2. Audit logging of all changes
+      3. Rollback capability
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "B7.1"
+
+  # ============================================================================
+  # MEMORY SAFETY FOR TERMINAL SOFTWARE
+  # ============================================================================
+
+  - id: pci-sss-b-buffer-overflow-risk
+    patterns:
+      - pattern-either:
+          - pattern: strcpy($DEST, $SRC)
+          - pattern: strcat($DEST, $SRC)
+          - pattern: sprintf($DEST, $FMT, ...)
+          - pattern: gets($BUFFER)
+    message: |
+      Unsafe C function detected - buffer overflow risk.
+      
+      Terminal software must be memory-safe to prevent exploitation.
+      
+      Replace with safe alternatives:
+      - strcpy → strncpy or strlcpy
+      - strcat → strncat or strlcat
+      - sprintf → snprintf
+      - gets → fgets
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-120: Buffer Copy without Checking Size of Input"
+      framework: PCI-SSS
+      note: "Memory safety requirement"
+
+  - id: pci-sss-b-use-after-free-risk
+    patterns:
+      - pattern-either:
+          - pattern: |
+              free($PTR);
+              ...
+              $PTR->$FIELD;
+          - pattern: |
+              free($PTR);
+              ...
+              *$PTR;
+    message: |
+      Potential use-after-free vulnerability.
+      
+      Set pointers to NULL after free to prevent use-after-free:
+        free(ptr);
+        ptr = NULL;
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-416: Use After Free"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # DEBUG AND DEVELOPMENT CONTROLS
+  # ============================================================================
+
+  - id: pci-sss-b-debug-backdoor
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if ($INPUT == "DEBUG_MODE_ON") {
+                  $DEBUG = true;
+              }
+          - pattern: |
+              if (strcmp($CMD, "enable_debug") == 0) {
+                  ...
+              }
+    message: |
+      Debug backdoor detected in terminal code.
+      
+      Production terminals must have all debug functionality removed or 
+      protected with hardware-backed authentication.
+      
+      Debug modes can bypass security controls.
+    severity: ERROR
+    languages: [c, cpp]
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      framework: PCI-SSS
+
+  - id: pci-sss-b-hardcoded-test-mode
+    patterns:
+      - pattern-either:
+          - pattern: |
+              #define TEST_MODE 1
+          - pattern: |
+              bool test_mode = true;
+    message: |
+      Test mode enabled in code.
+      
+      Ensure test mode is disabled for production builds.
+      Test modes may bypass security validations.
+    severity: WARNING
+    languages: [c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+
+  # ============================================================================
+  # COMPLIANCE REMINDERS
+  # ============================================================================
+
+  - id: pci-sss-b-reminder-pts-poi-certification
+    patterns:
+      - pattern-either:
+          - pattern: |
+              int main() {
+                  ...
+              }
+    message: |
+      REMINDER: Terminal software requires PCI PTS POI certification.
+      
+      These Semgrep rules check software patterns but cannot verify:
+      - Hardware security features (secure element, tamper detection)
+      - Physical security
+      - Complete key management procedures
+      
+      PCI PTS POI certification by approved lab is MANDATORY for production 
+      deployment of payment terminals.
+      
+      Contact: https://www.pcisecuritystandards.org/assessors_and_solutions/pin_transaction_devices
+    severity: INFO
+    languages: [c, cpp]
+    metadata:
+      category: compliance
+      framework: PCI-SSS
+      note: "Certification requirement reminder"
+
+  - id: pci-sss-b-hardware-dependency
+    patterns:
+      - pattern-either:
+          - pattern: |
+              // TODO: implement secure element integration
+          - pattern: |
+              // FIXME: add tamper detection
+          - pattern: |
+              /* Hardware security module required */
+    message: |
+      Hardware security dependency noted in code.
+      
+      Module B requirements heavily depend on hardware security features.
+      Ensure all hardware dependencies are implemented before deployment.
+    severity: INFO
+    languages: [c, cpp]
+    metadata:
+      category: compliance
+      framework: PCI-SSS
+
+# ============================================================================
+# END OF MODULE B RULES
+# ============================================================================
+# 
+# Total Rules: 30+
+# 
+# IMPORTANT NOTES:
+# 
+# 1. Module B primarily applies to C/C++ terminal software
+# 2. Many requirements require hardware validation beyond static analysis
+# 3. PCI PTS POI certification is MANDATORY for production terminals
+# 4. These rules identify software-level issues but cannot verify:
+#    - Secure element implementation
+#    - Physical tamper detection
+#    - Hardware-backed cryptography
+#    - Side-channel attack resistance
+# 
+# Categories:
+#   - PIN Security: 5 rules
+#   - Secure Boot: 5 rules
+#   - Anti-Tampering: 4 rules
+#   - Key Management: 3 rules
+#   - Terminal Authentication: 2 rules
+#   - Secure Communications: 3 rules
+#   - Configuration Security: 3 rules
+#   - Memory Safety: 2 rules
+#   - Debug Controls: 2 rules
+#   - Compliance Reminders: 2 rules
+#
+# Usage:
+#   semgrep --config rules/semgrep/pci-dss/module-b.yaml /path/to/terminal-code
+#
+# Note: These rules are most effective on C/C++ terminal software.
+# They may have limited applicability to high-level language payment software.
+#
+# Repository:
+#   https://github.com/cj-juntunen/security-framework-linters
+# ============================================================================
