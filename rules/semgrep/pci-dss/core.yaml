@@ -1,0 +1,1350 @@
+rules:
+  # ============================================================================
+  # PCI DSS Secure Software Standard - Core Requirements
+  # Semgrep Rule Configuration
+  # ============================================================================
+  # Version: 1.0.0
+  # Framework: PCI SSS v1.2.1
+  # Module: Core Requirements
+  # Last Updated: 2024-11-19
+  # ============================================================================
+
+  # ============================================================================
+  # 1. SECURE SOFTWARE DEVELOPMENT - Input Validation
+  # ============================================================================
+
+  - id: pci-sss-core-1.1-sql-injection-python-fstring
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute(f"... {$VAR} ...")
+          - pattern: $DB.execute("... " + $VAR + "...")
+          - pattern: $DB.execute("... %s ..." % $VAR)
+          - pattern: $CURSOR.execute(f"... {$VAR} ...")
+          - pattern: $DB.query(f"... {$VAR} ...")
+    message: |
+      Potential SQL injection vulnerability detected. User input is directly 
+      interpolated into SQL query without parameterization.
+      
+      PCI SSS Core Requirement 1.1 requires all input to be validated and 
+      parameterized queries to be used.
+      
+      Fix: Use parameterized queries with placeholders:
+        cursor.execute("SELECT * FROM table WHERE id = ?", (user_input,))
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      technology: [sql, database]
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+      confidence: HIGH
+
+  - id: pci-sss-core-1.1-sql-injection-javascript
+    patterns:
+      - pattern-either:
+          - pattern: $DB.query(`... ${$VAR} ...`)
+          - pattern: $DB.query("... " + $VAR + "...")
+          - pattern: $DB.execute(`... ${$VAR} ...`)
+          - pattern: $POOL.query(`... ${$VAR} ...`)
+          - pattern: $CONN.query("... " + $VAR)
+    message: |
+      Potential SQL injection vulnerability. User input concatenated into SQL query.
+      
+      PCI SSS Core 1.1 requires parameterized queries for all database operations.
+      
+      Fix: Use parameterized queries:
+        db.query('SELECT * FROM table WHERE id = ?', [userId])
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      technology: [sql, database]
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+      confidence: HIGH
+
+  - id: pci-sss-core-1.1-sql-injection-java
+    patterns:
+      - pattern-either:
+          - pattern: $STMT.executeQuery("... " + $VAR + "...")
+          - pattern: $STMT.executeUpdate("... " + $VAR + "...")
+          - pattern: $STMT.execute("... " + $VAR + "...")
+          - pattern: |
+              String $QUERY = "..." + $VAR + "...";
+              ...
+              $STMT.executeQuery($QUERY);
+    message: |
+      SQL injection vulnerability detected. Use PreparedStatement instead of 
+      concatenating user input into queries.
+      
+      PCI SSS Core 1.1 requires parameterized queries.
+      
+      Fix: 
+        PreparedStatement stmt = conn.prepareStatement("SELECT * FROM table WHERE id = ?");
+        stmt.setString(1, userId);
+    severity: ERROR
+    languages: [java]
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-1.1-command-injection-python
+    patterns:
+      - pattern-either:
+          - pattern: os.system($VAR)
+          - pattern: os.system(f"... {$VAR} ...")
+          - pattern: os.popen($VAR)
+          - pattern: subprocess.call($VAR, shell=True)
+          - pattern: subprocess.run($VAR, shell=True)
+          - pattern: subprocess.Popen($VAR, shell=True)
+    message: |
+      Command injection vulnerability detected. User input may be executed as shell command.
+      
+      PCI SSS Core 1.1 requires input validation and safe command execution.
+      
+      Fix: Use subprocess with list arguments and shell=False:
+        subprocess.run(['command', user_input], shell=False, check=True)
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      cwe: "CWE-78: OS Command Injection"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+      confidence: HIGH
+
+  - id: pci-sss-core-1.1-command-injection-javascript
+    patterns:
+      - pattern-either:
+          - pattern: child_process.exec($VAR, ...)
+          - pattern: child_process.exec(`... ${$VAR} ...`, ...)
+          - pattern: |
+              const { exec } = require('child_process');
+              ...
+              exec($VAR, ...);
+    message: |
+      Command injection vulnerability. User input executed as shell command.
+      
+      PCI SSS Core 1.1 requires safe command execution.
+      
+      Fix: Use execFile with array of arguments:
+        execFile('command', [arg1, userInput], callback)
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-78"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  # ============================================================================
+  # 1. SECURE SOFTWARE DEVELOPMENT - Output Encoding
+  # ============================================================================
+
+  - id: pci-sss-core-1.2-xss-innerhtml
+    patterns:
+      - pattern-either:
+          - pattern: $ELEMENT.innerHTML = $VAR
+          - pattern: $ELEMENT.outerHTML = $VAR
+          - pattern: document.write($VAR)
+          - pattern: $ELEMENT.insertAdjacentHTML(..., $VAR)
+    message: |
+      Cross-Site Scripting (XSS) vulnerability. User input assigned to innerHTML without sanitization.
+      
+      PCI SSS Core 1.2 requires proper output encoding for all user-generated content.
+      
+      Fix: Use textContent for text, or sanitize HTML with DOMPurify:
+        element.textContent = userInput;
+        // OR
+        element.innerHTML = DOMPurify.sanitize(userInput);
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.2"
+      confidence: HIGH
+
+  - id: pci-sss-core-1.2-react-dangerously-set-html
+    pattern: <$COMPONENT dangerouslySetInnerHTML={{...}} />
+    message: |
+      Potentially unsafe use of dangerouslySetInnerHTML. This bypasses React's XSS protection.
+      
+      PCI SSS Core 1.2 requires output encoding. Only use dangerouslySetInnerHTML with 
+      thoroughly sanitized content.
+      
+      Fix: Remove dangerouslySetInnerHTML and use regular JSX, or sanitize with DOMPurify:
+        <div>{sanitizedContent}</div>
+    severity: WARNING
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      technology: [react]
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.2"
+
+  - id: pci-sss-core-1.2-python-flask-unescaped
+    patterns:
+      - pattern-either:
+          - pattern: |
+              return f"<html>...{$VAR}...</html>"
+          - pattern: |
+              return "<html>..." + $VAR + "...</html>"
+          - pattern: |
+              flask.Markup($VAR)
+    message: |
+      Potential XSS vulnerability in Flask. HTML output with unescaped user input.
+      
+      PCI SSS Core 1.2 requires output encoding.
+      
+      Fix: Use render_template with Jinja2 auto-escaping:
+        return render_template('page.html', user_input=var)
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      technology: [flask]
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "Core-1.2"
+
+  # ============================================================================
+  # 2. AUTHENTICATION AND ACCESS CONTROL
+  # ============================================================================
+
+  - id: pci-sss-core-2.1-weak-password-length
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if len($PWD) < $N:
+                  ...
+          - pattern: |
+              if $PWD.length < $N
+          - pattern: |
+              if ($PWD.length() < $N)
+      - metavariable-comparison:
+          metavariable: $N
+          comparison: $N < 8
+    message: |
+      Weak password length requirement detected. Minimum is less than 8 characters.
+      
+      PCI SSS Core 2.1 requires passwords to be:
+      - At least 12 characters (recommended), OR
+      - At least 8 characters with complexity requirements
+      
+      Fix: Increase minimum password length to 12 or enforce complexity for 8+.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-521: Weak Password Requirements"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+      requirement: "Core-2.1"
+
+  - id: pci-sss-core-2.1-no-password-complexity
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNC($PWD):
+                  return len($PWD) >= 8
+          - pattern: |
+              function $FUNC($PWD) {
+                  return $PWD.length >= 8;
+              }
+      - pattern-not: |
+          ... regex ...
+      - pattern-not: |
+          ... complexity ...
+    message: |
+      Password validation appears to check only length without complexity requirements.
+      
+      PCI SSS Core 2.1 requires passwords 8-11 characters to have complexity 
+      (uppercase, lowercase, digits, special characters).
+      
+      Fix: Add complexity validation for passwords under 12 characters.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-521"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+      requirement: "Core-2.1"
+
+  - id: pci-sss-core-2.2-missing-mfa-admin
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/admin/...')
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.get('/admin/...', ...)
+          - pattern: |
+              @PreAuthorize("hasRole('ADMIN')")
+              ...
+              public ... $METHOD(...) { ... }
+      - pattern-not: |
+          ... mfa ...
+      - pattern-not: |
+          ... two_factor ...
+      - pattern-not: |
+          ... 2fa ...
+    message: |
+      Admin route detected without apparent MFA check.
+      
+      PCI SSS Core 2.2 requires multi-factor authentication for administrative access.
+      
+      Fix: Add MFA verification middleware or decorator to admin routes.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+      requirement: "Core-2.2"
+
+  # ============================================================================
+  # 3. SECURE COMMUNICATIONS
+  # ============================================================================
+
+  - id: pci-sss-core-3.1-http-not-https-payment
+    patterns:
+      - pattern-either:
+          - pattern: requests.post("http://...", ...)
+          - pattern: requests.get("http://...", ...)
+          - pattern: urllib.request.urlopen("http://...")
+          - pattern: fetch("http://...", ...)
+          - pattern: axios.post("http://...", ...)
+          - pattern: http.request(...)
+      - metavariable-regex:
+          metavariable: $URL
+          regex: ".*(payment|card|transaction|gateway).*"
+    message: |
+      HTTP (not HTTPS) detected for payment-related communication.
+      
+      PCI SSS Core 3.1 requires TLS 1.2+ for all payment data transmission.
+      
+      Fix: Use HTTPS with TLS 1.2 minimum:
+        requests.post("https://...", ...)
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-3.1"
+      confidence: HIGH
+
+  - id: pci-sss-core-3.1-tls-verify-disabled
+    patterns:
+      - pattern-either:
+          - pattern: requests.$METHOD(..., verify=False, ...)
+          - pattern: |
+              $CTX = ssl.create_default_context()
+              ...
+              $CTX.check_hostname = False
+          - pattern: |
+              $CTX = ssl.create_default_context()
+              ...
+              $CTX.verify_mode = ssl.CERT_NONE
+          - pattern: |
+              rejectUnauthorized: false
+          - pattern: |
+              strictSSL: false
+    message: |
+      TLS certificate verification disabled. This allows man-in-the-middle attacks.
+      
+      PCI SSS Core 3.1 requires certificate validation for all TLS connections.
+      
+      Fix: Enable certificate verification:
+        requests.post(url, verify=True)  # or path to CA bundle
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-3.1"
+      confidence: HIGH
+
+  - id: pci-sss-core-3.1-weak-tls-version
+    patterns:
+      - pattern-either:
+          - pattern: ssl.PROTOCOL_SSLv3
+          - pattern: ssl.PROTOCOL_TLSv1
+          - pattern: ssl.PROTOCOL_TLSv1_1
+          - pattern: |
+              secureProtocol: 'SSLv3_method'
+          - pattern: |
+              secureProtocol: 'TLSv1_method'
+          - pattern: |
+              secureProtocol: 'TLSv1_1_method'
+    message: |
+      Weak TLS/SSL protocol version detected. SSL/TLS 1.0/1.1 are deprecated and insecure.
+      
+      PCI SSS Core 3.1 requires TLS 1.2 or higher.
+      
+      Fix: Use TLS 1.2 or 1.3:
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-3.1"
+
+  # ============================================================================
+  # 4. CRYPTOGRAPHIC KEY MANAGEMENT
+  # ============================================================================
+
+  - id: pci-sss-core-4.1-hardcoded-key-string
+    patterns:
+      - pattern-either:
+          - pattern: $KEY = "..."
+          - pattern: $KEY = b"..."
+          - pattern: |
+              const $KEY = "...";
+          - pattern: |
+              private static final String $KEY = "...";
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: ".*(key|secret|token|password|api_key).*"
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: "^[A-Za-z0-9+/=]{20,}$"
+    message: |
+      Potential hardcoded cryptographic key or secret detected.
+      
+      PCI SSS Core 4.1 requires keys to be stored in secure key management systems.
+      
+      Fix: Use environment variables or key management service:
+        key = os.environ.get('ENCRYPTION_KEY')
+        # OR use AWS KMS, Azure Key Vault, etc.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-4.1"
+      confidence: MEDIUM
+
+  - id: pci-sss-core-4.1-weak-encryption-algorithm
+    patterns:
+      - pattern-either:
+          - pattern: Crypto.Cipher.DES.new(...)
+          - pattern: Crypto.Cipher.ARC4.new(...)
+          - pattern: crypto.createCipher('des', ...)
+          - pattern: crypto.createCipher('rc4', ...)
+          - pattern: Cipher.getInstance("DES")
+          - pattern: Cipher.getInstance("RC4")
+          - pattern: MessageDigest.getInstance("MD5")
+          - pattern: MessageDigest.getInstance("SHA1")
+    message: |
+      Weak encryption algorithm detected (DES, RC4, MD5, SHA1).
+      
+      PCI SSS Core 4.1 requires strong cryptography (AES-256, RSA-2048+, SHA-256+).
+      
+      Fix: Use modern algorithms:
+        - AES-256 for symmetric encryption
+        - RSA-2048 or ECDSA-P256 for asymmetric
+        - SHA-256 or SHA-3 for hashing
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-4.1"
+
+  - id: pci-sss-core-4.1-static-iv
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $IV = "..."
+              ...
+              $CIPHER = ... ($KEY, ..., $IV)
+          - pattern: |
+              $IV = b"..."
+              ...
+              $CIPHER = ... ($KEY, ..., $IV)
+          - pattern: |
+              const iv = "...";
+              ...
+              crypto.createCipheriv(..., iv);
+    message: |
+      Static initialization vector (IV) detected. IVs must be randomly generated for each encryption.
+      
+      PCI SSS Core 4.1 requires proper cryptographic implementation.
+      
+      Fix: Generate random IV for each encryption:
+        iv = os.urandom(16)  # For AES
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-329: Not Using a Random IV with CBC Mode"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-4.1"
+
+  # ============================================================================
+  # 5. SECURE LOGGING
+  # ============================================================================
+
+  - id: pci-sss-core-5.1-sensitive-data-in-logs-python
+    patterns:
+      - pattern-either:
+          - pattern: logging.$LEVEL(..., $VAR, ...)
+          - pattern: print(..., $VAR, ...)
+          - pattern: logger.$LEVEL(..., $VAR, ...)
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ".*(password|pwd|secret|token|api_key|card|cvv|ssn).*"
+    message: |
+      Potential logging of sensitive data detected.
+      
+      PCI SSS Core 5.1 prohibits logging of passwords, keys, tokens, and payment card data.
+      
+      Fix: Remove sensitive data from logs or mask it:
+        logging.info(f"User login: {username}")  # Don't log password
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+      owasp: "A09:2021 - Security Logging and Monitoring Failures"
+      framework: PCI-SSS
+      requirement: "Core-5.1"
+      confidence: MEDIUM
+
+  - id: pci-sss-core-5.1-sensitive-data-in-logs-javascript
+    patterns:
+      - pattern-either:
+          - pattern: console.log(..., $VAR, ...)
+          - pattern: console.error(..., $VAR, ...)
+          - pattern: console.debug(..., $VAR, ...)
+          - pattern: logger.$LEVEL(..., $VAR, ...)
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ".*(password|pwd|secret|token|apiKey|card|cvv|ssn).*"
+    message: |
+      Potential logging of sensitive data detected.
+      
+      PCI SSS Core 5.1 prohibits logging of sensitive authentication data.
+      
+      Fix: Remove sensitive data from console/log output.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-532"
+      owasp: "A09:2021 - Security Logging and Monitoring Failures"
+      framework: PCI-SSS
+      requirement: "Core-5.1"
+      confidence: MEDIUM
+
+  - id: pci-sss-core-5.1-exception-may-contain-sensitive-data
+    patterns:
+      - pattern-either:
+          - pattern: |
+              except $EXC as $E:
+                  logging.error(..., $E, ...)
+          - pattern: |
+              catch ($ERR) {
+                  console.log(..., $ERR, ...);
+              }
+          - pattern: |
+              catch (Exception $E) {
+                  logger.error(..., $E, ...);
+              }
+    message: |
+      Logging full exception may expose sensitive data.
+      
+      PCI SSS Core 5.1 requires careful handling of error messages.
+      
+      Fix: Log exception type and safe message, not full details:
+        logging.error(f"Operation failed: {type(e).__name__}")
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-209: Information Exposure Through Error Message"
+      framework: PCI-SSS
+      requirement: "Core-5.1"
+
+  # ============================================================================
+  # 6. SECURE CONFIGURATION
+  # ============================================================================
+
+  - id: pci-sss-core-7.1-debug-mode-enabled
+    patterns:
+      - pattern-either:
+          - pattern: DEBUG = True
+          - pattern: |
+              app.debug = True
+          - pattern: |
+              debug: true
+          - pattern: |
+              NODE_ENV = 'development'
+    message: |
+      Debug mode appears to be enabled. This may expose sensitive information.
+      
+      PCI SSS Core 7.1 requires secure configuration in production.
+      
+      Fix: Disable debug mode in production:
+        DEBUG = False  # or use environment variable
+    severity: WARNING
+    languages: [python, javascript, typescript, yaml]
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      owasp: "A05:2021 - Security Misconfiguration"
+      framework: PCI-SSS
+      requirement: "Core-7.1"
+
+  - id: pci-sss-core-7.1-exposed-error-details
+    patterns:
+      - pattern-either:
+          - pattern: |
+              app = Flask(__name__)
+              ...
+          - pattern: |
+              app.use(express.errorHandler())
+      - pattern-not: |
+          ... production ...
+    message: |
+      Application may expose detailed error messages.
+      
+      PCI SSS Core 7.1 requires error messages to not expose system details.
+      
+      Fix: Use custom error handlers that return generic messages in production.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-209"
+      owasp: "A05:2021 - Security Misconfiguration"
+      framework: PCI-SSS
+      requirement: "Core-7.1"
+
+  # ============================================================================
+  # ADDITIONAL SECURITY PATTERNS
+  # ============================================================================
+
+  - id: pci-sss-core-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads($DATA)
+          - pattern: yaml.load($DATA)
+          - pattern: eval($DATA)
+          - pattern: JSON.parse($DATA)
+      - pattern-not: |
+          ... validate ...
+      - pattern-not: |
+          ... trusted ...
+    message: |
+      Insecure deserialization of untrusted data detected.
+      
+      This can lead to remote code execution. Validate and sanitize all input.
+      
+      Fix: Use safe deserialization methods:
+        yaml.safe_load(data)  # Instead of yaml.load
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-path-traversal
+    patterns:
+      - pattern-either:
+          - pattern: open($PATH, ...)
+          - pattern: os.path.join($BASE, $USER_INPUT)
+          - pattern: fs.readFile($PATH, ...)
+          - pattern: Files.read($PATH)
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: ".*\\.\\./.*"
+    message: |
+      Potential path traversal vulnerability. User input used in file path.
+      
+      PCI SSS Core 1.1 requires input validation.
+      
+      Fix: Validate and sanitize file paths, use allowlists:
+        safe_path = os.path.abspath(os.path.join(BASE_DIR, filename))
+        if not safe_path.startswith(BASE_DIR):
+            raise ValueError("Invalid path")
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-22: Path Traversal"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-xxe-vulnerability
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PARSER = etree.XMLParser()
+              ...
+              etree.parse($FILE, $PARSER)
+          - pattern: |
+              $PARSER = xml.dom.minidom.parse($FILE)
+          - pattern: |
+              $DOC = new DOMParser().parseFromString($XML, 'text/xml')
+      - pattern-not: |
+          ... resolve_entities=False ...
+      - pattern-not: |
+          ... external_entity ...
+    message: |
+      XML External Entity (XXE) vulnerability. XML parser may process external entities.
+      
+      PCI SSS Core 1.1 requires secure parsing of untrusted input.
+      
+      Fix: Disable external entity processing:
+        parser = etree.XMLParser(resolve_entities=False)
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-611: Improper Restriction of XML External Entity Reference"
+      owasp: "A05:2021 - Security Misconfiguration"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-csrf-protection-missing
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route(..., methods=["POST"])
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.post(..., ...)
+      - pattern-not: |
+          ... csrf ...
+      - pattern-not: |
+          ... @csrf_protect ...
+    message: |
+      POST endpoint without apparent CSRF protection.
+      
+      PCI SSS requires protection against Cross-Site Request Forgery.
+      
+      Fix: Implement CSRF tokens for state-changing operations.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-352: Cross-Site Request Forgery"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-mass-assignment
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $MODEL.objects.create(**request.POST)
+          - pattern: |
+              $MODEL.objects.create(**request.data)
+          - pattern: |
+              $MODEL.update_attributes(params)
+          - pattern: |
+              new $MODEL(req.body)
+    message: |
+      Mass assignment vulnerability. User input directly mapped to model.
+      
+      This can allow unauthorized field updates.
+      
+      Fix: Explicitly specify allowed fields:
+        Model.objects.create(name=data['name'], email=data['email'])
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-915: Improperly Controlled Modification of Dynamically-Determined Object Attributes"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-unsafe-redirect
+    patterns:
+      - pattern-either:
+          - pattern: redirect($URL)
+          - pattern: res.redirect($URL)
+          - pattern: response.sendRedirect($URL)
+      - metavariable-regex:
+          metavariable: $URL
+          regex: ".*(request|req|param|query).*"
+    message: |
+      Open redirect vulnerability. User-controlled URL in redirect.
+      
+      This can be used for phishing attacks.
+      
+      Fix: Validate redirect URLs against allowlist:
+        if url in ALLOWED_REDIRECTS:
+            return redirect(url)
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-601: URL Redirection to Untrusted Site"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-session-fixation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              session[$KEY] = $VALUE
+          - pattern: |
+              req.session.$KEY = $VALUE
+      - pattern-not: |
+          ... regenerate ...
+      - pattern-not: |
+          ... new_session ...
+    message: |
+      Session value set without regenerating session ID.
+      
+      This may lead to session fixation vulnerabilities.
+      
+      Fix: Regenerate session ID after authentication:
+        session.regenerate()
+        session['user_id'] = user.id
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-384: Session Fixation"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-insecure-randomness
+    patterns:
+      - pattern-either:
+          - pattern: random.random()
+          - pattern: Math.random()
+          - pattern: new Random()
+      - metavariable-regex:
+          metavariable: $USAGE
+          regex: ".*(token|key|secret|password|session).*"
+    message: |
+      Insecure random number generator used for security-sensitive operation.
+      
+      PCI SSS requires cryptographically secure random number generation.
+      
+      Fix: Use secure random functions:
+        Python: secrets.token_hex(32)
+        JavaScript: crypto.randomBytes(32)
+        Java: SecureRandom.getInstanceStrong()
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-338: Use of Cryptographically Weak Pseudo-Random Number Generator"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      requirement: "Core-4.1"
+
+  - id: pci-sss-core-timing-attack-comparison
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if $SECRET == $INPUT:
+                  ...
+          - pattern: |
+              if ($SECRET === $INPUT)
+          - pattern: |
+              if ($SECRET.equals($INPUT))
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: ".*(token|secret|password|hash|signature).*"
+    message: |
+      Timing attack vulnerability. Comparing secrets with standard equality operator.
+      
+      Use constant-time comparison for security-sensitive values.
+      
+      Fix: Use constant-time comparison:
+        Python: secrets.compare_digest(secret, input)
+        Node.js: crypto.timingSafeEqual(secret, input)
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-208: Observable Timing Discrepancy"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-missing-rate-limiting
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/login', methods=['POST'])
+              def login():
+                  ...
+          - pattern: |
+              @app.route('/api/...')
+              def $FUNC():
+                  ...
+          - pattern: |
+              app.post('/login', ...)
+          - pattern: |
+              app.post('/api/...', ...)
+      - pattern-not: |
+          ... rate_limit ...
+      - pattern-not: |
+          ... throttle ...
+      - pattern-not: |
+          ... limiter ...
+    message: |
+      Authentication or API endpoint without apparent rate limiting.
+      
+      This makes brute force attacks easier.
+      
+      Fix: Implement rate limiting:
+        @limiter.limit("5 per minute")
+        @app.route('/login', methods=['POST'])
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-307: Improper Restriction of Excessive Authentication Attempts"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # PAYMENT CARD DATA SPECIFIC RULES
+  # ============================================================================
+
+  - id: pci-sss-core-pan-pattern-in-code
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "4[0-9]{15}"
+          - pattern: $VAR = "5[1-5][0-9]{14}"
+          - pattern: $VAR = "3[47][0-9]{13}"
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: "^[3-6][0-9]{13,18}$"
+    message: |
+      Potential Primary Account Number (PAN) pattern detected in code.
+      
+      Test PANs should be clearly marked. Real PANs must never be in code.
+      
+      If this is a test PAN, use standardized test card numbers from payment networks.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-798"
+      owasp: "A02:2021 - Cryptographic Failures"
+      framework: PCI-SSS
+      pci-dss: "3.4"
+
+  - id: pci-sss-core-cvv-variable-name
+    patterns:
+      - pattern-either:
+          - pattern: $CVV = ...
+          - pattern: $CVC = ...
+          - pattern: $CVV2 = ...
+          - pattern: |
+              def $FUNC(..., $CVV, ...):
+                  ...
+          - pattern: |
+              function $FUNC(..., $CVV, ...) { ... }
+      - metavariable-regex:
+          metavariable: $CVV
+          regex: ".*(cvv|cvc|cav|cid).*"
+    message: |
+      Variable name suggests CVV/CVC handling.
+      
+      REMINDER: CVV/CVC must NEVER be stored after authorization, even encrypted.
+      Ensure this variable is only used transiently for authorization.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      pci-dss: "3.2"
+      framework: PCI-SSS
+      note: "This is a reminder, not necessarily a violation"
+
+  - id: pci-sss-core-pin-variable-name
+    patterns:
+      - pattern-either:
+          - pattern: $PIN = ...
+          - pattern: |
+              def $FUNC(..., $PIN, ...):
+                  ...
+          - pattern: |
+              function $FUNC(..., $PIN, ...) { ... }
+      - metavariable-regex:
+          metavariable: $PIN
+          regex: ".*pin.*"
+    message: |
+      Variable name suggests PIN handling.
+      
+      CRITICAL: PINs must be encrypted immediately upon entry in secure hardware.
+      PINs should NEVER exist in application-level code.
+      
+      Verify this is handled in a secure cryptographic device.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      pci-dss: "3.2"
+      framework: PCI-SSS
+      confidence: MEDIUM
+
+  - id: pci-sss-core-track-data-variable
+    patterns:
+      - pattern-either:
+          - pattern: $TRACK = ...
+          - pattern: $TRACK1 = ...
+          - pattern: $TRACK2 = ...
+          - pattern: $MAGNETIC = ...
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ".*(track|magnetic|stripe).*"
+    message: |
+      Variable name suggests magnetic stripe/track data handling.
+      
+      CRITICAL: Full track data must NEVER be stored after authorization.
+      This includes encrypted storage.
+      
+      Ensure track data is only used transiently for authorization.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      pci-dss: "3.2"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # DEPENDENCY AND SUPPLY CHAIN SECURITY
+  # ============================================================================
+
+  - id: pci-sss-core-outdated-dependency-warning
+    patterns:
+      - pattern-either:
+          - pattern: |
+              requests==2.25.0
+          - pattern: |
+              "express": "4.17.0"
+          - pattern: |
+              <version>1.2.3</version>
+    message: |
+      Specific dependency version detected. Ensure dependencies are kept up-to-date.
+      
+      PCI SSS requires regular updates to address security vulnerabilities.
+      
+      Use tools like pip-audit, npm audit, or OWASP Dependency-Check.
+    severity: INFO
+    languages: [python, javascript, typescript, java, yaml, xml]
+    metadata:
+      category: security
+      owasp: "A06:2021 - Vulnerable and Outdated Components"
+      framework: PCI-SSS
+      requirement: "Core-6.1"
+
+  # ============================================================================
+  # SECURE CODING BEST PRACTICES
+  # ============================================================================
+
+  - id: pci-sss-core-sql-raw-query
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute_raw($QUERY)
+          - pattern: $DB.raw($QUERY)
+          - pattern: $CONN.execute($QUERY)
+      - pattern-not: |
+          ... parameterized ...
+    message: |
+      Raw SQL query execution detected.
+      
+      Ensure query uses parameterized statements to prevent SQL injection.
+      
+      Review carefully to verify no user input is concatenated.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      framework: PCI-SSS
+      requirement: "Core-1.1"
+
+  - id: pci-sss-core-todo-security
+    patterns:
+      - pattern-either:
+          - pattern-regex: ".*TODO.*security.*"
+          - pattern-regex: ".*FIXME.*security.*"
+          - pattern-regex: ".*XXX.*security.*"
+          - pattern-regex: ".*HACK.*security.*"
+    message: |
+      Security-related TODO/FIXME comment found.
+      
+      Ensure security issues are tracked and resolved before production deployment.
+    severity: INFO
+    languages: [python, javascript, typescript, java, go, c, cpp]
+    metadata:
+      category: security
+      framework: PCI-SSS
+
+  - id: pci-sss-core-empty-password
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $PASSWORD = ""
+          - pattern: |
+              password: ""
+          - pattern: |
+              const password = "";
+    message: |
+      Empty password detected.
+      
+      Ensure this is intentional and not a security misconfiguration.
+    severity: WARNING
+    languages: [python, javascript, typescript, yaml]
+    metadata:
+      category: security
+      cwe: "CWE-521"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-commented-credential
+    patterns:
+      - pattern-regex: ".*#.*password.*=.*"
+      - pattern-regex: ".*//.*password.*=.*"
+      - pattern-regex: ".*/\\*.*password.*=.*"
+    message: |
+      Commented-out credential detected.
+      
+      Remove credentials from code, even in comments.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-615: Inclusion of Sensitive Information in Source Code Comments"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # SECURE SESSION MANAGEMENT
+  # ============================================================================
+
+  - id: pci-sss-core-insecure-cookie
+    patterns:
+      - pattern-either:
+          - pattern: |
+              response.set_cookie($NAME, ..., secure=False, ...)
+          - pattern: |
+              response.set_cookie($NAME, ..., httponly=False, ...)
+          - pattern: |
+              res.cookie($NAME, $VAL, { secure: false })
+          - pattern: |
+              res.cookie($NAME, $VAL, { httpOnly: false })
+    message: |
+      Insecure cookie configuration detected.
+      
+      Cookies should have secure=True and httponly=True flags.
+      
+      Fix:
+        response.set_cookie(name, value, secure=True, httponly=True, samesite='Strict')
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-614: Sensitive Cookie in HTTPS Session Without 'Secure' Attribute"
+      owasp: "A05:2021 - Security Misconfiguration"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-long-session-timeout
+    patterns:
+      - pattern-either:
+          - pattern: |
+              SESSION_COOKIE_AGE = $TIME
+          - pattern: |
+              sessionTimeout: $TIME
+          - pattern: |
+              session.setMaxInactiveInterval($TIME)
+      - metavariable-comparison:
+          metavariable: $TIME
+          comparison: $TIME > 3600
+    message: |
+      Long session timeout detected (> 1 hour).
+      
+      For payment applications, implement shorter session timeouts (15-30 minutes).
+      
+      PCI DSS requires automatic session termination.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-613: Insufficient Session Expiration"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # FILE UPLOAD SECURITY
+  # ============================================================================
+
+  - id: pci-sss-core-unrestricted-file-upload
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $FILE.save($PATH)
+          - pattern: |
+              fs.writeFile($PATH, $DATA)
+          - pattern: |
+              Files.write($PATH, $DATA)
+      - pattern-not: |
+          ... validate ...
+      - pattern-not: |
+          ... allowed_extensions ...
+    message: |
+      File upload without apparent validation.
+      
+      Validate file type, size, and content before saving.
+      
+      Fix:
+        - Check file extension against allowlist
+        - Validate file content type
+        - Scan for malware
+        - Store outside webroot with random names
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-434: Unrestricted Upload of File with Dangerous Type"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # API SECURITY
+  # ============================================================================
+
+  - id: pci-sss-core-missing-authentication-header
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/api/...')
+              def $FUNC():
+                  ...
+          - pattern: |
+              app.get('/api/...', ...)
+          - pattern: |
+              app.post('/api/...', ...)
+      - pattern-not: |
+          ... Authorization ...
+      - pattern-not: |
+          ... authenticate ...
+      - pattern-not: |
+          ... @login_required ...
+    message: |
+      API endpoint without apparent authentication check.
+      
+      Ensure proper authentication is implemented for all API endpoints.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-cors-allow-all
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Access-Control-Allow-Origin: *
+          - pattern: |
+              cors({ origin: '*' })
+          - pattern: |
+              @cross_origin(origins='*')
+    message: |
+      CORS configured to allow all origins (*).
+      
+      This can enable cross-origin attacks. Restrict to trusted origins only.
+      
+      Fix: cors({ origin: 'https://trusted-domain.com' })
+    severity: WARNING
+    languages: [python, javascript, typescript, yaml]
+    metadata:
+      category: security
+      cwe: "CWE-346: Origin Validation Error"
+      owasp: "A05:2021 - Security Misconfiguration"
+      framework: PCI-SSS
+
+  # ============================================================================
+  # INFORMATION DISCLOSURE
+  # ============================================================================
+
+  - id: pci-sss-core-version-disclosure
+    patterns:
+      - pattern-either:
+          - pattern: |
+              Server: $VERSION
+          - pattern: |
+              X-Powered-By: $VERSION
+          - pattern: |
+              response.headers['Server'] = $VERSION
+    message: |
+      Server version disclosure in HTTP headers.
+      
+      Remove or obfuscate server version information to reduce information leakage.
+    severity: INFO
+    languages: [python, javascript, typescript, yaml]
+    metadata:
+      category: security
+      cwe: "CWE-200: Exposure of Sensitive Information to an Unauthorized Actor"
+      framework: PCI-SSS
+
+  - id: pci-sss-core-directory-listing-enabled
+    patterns:
+      - pattern-either:
+          - pattern: autoindex on
+          - pattern: |
+              Options +Indexes
+          - pattern: |
+              app.use(express.static(..., { index: false }))
+    message: |
+      Directory listing may be enabled.
+      
+      Disable directory browsing to prevent information disclosure.
+    severity: WARNING
+    languages: [yaml, typescript, javascript]
+    metadata:
+      category: security
+      cwe: "CWE-548: Exposure of Information Through Directory Listing"
+      framework: PCI-SSS
+
+# ============================================================================
+# END OF RULES
+# ============================================================================
+# 
+# Usage:
+#   semgrep --config rules/semgrep/pci-dss/core.yaml /path/to/code
