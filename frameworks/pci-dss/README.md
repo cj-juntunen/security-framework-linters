@@ -1,7 +1,7 @@
 # PCI DSS Secure Software Standard Rules
 
 **Framework:** PCI DSS Secure Software Standard (PCI SSS) v1.2.1  
-**Last Updated:** 2024-11-19  
+**Last Updated:** 2025-11-19  
 **Repository:** https://github.com/cj-juntunen/security-framework-linters
 
 ---
@@ -31,15 +31,40 @@ Each rule includes:
 
 ---
 
+## 🚀 Implementation Status
+
+### Framework Documentation ✅ COMPLETE
+- [x] Core Requirements
+- [x] Module A: Account Data Protection
+- [x] Module B: Terminal Software
+- [x] Module C: Web Software
+
+### Tool Support ✅ COMPLETE
+
+| Tool | Core | Module A | Module B | Module C | Languages |
+|------|------|----------|----------|----------|-----------|
+| **Semgrep** | ✅ | ✅ | ✅ | ✅ | Python, JS, Java, Go, C/C++, Ruby, PHP |
+| **ESLint** | ✅ | ✅ | N/A* | ✅ | JavaScript, TypeScript, React |
+| **SonarQube** | ✅ | ✅ | ✅ | ✅ | Java, JS, Python, C/C++ |
+
+*Module B is not applicable to ESLint as terminal software uses C/C++, not JavaScript
+
+---
+
 ## Module Structure
 
 The PCI SSS is organized into four requirement modules:
 
 ### Core Requirements (COMPLETE)
 **File:** [core-requirements.md](core-requirements.md)  
-**Status:** Complete  
+**Status:** ✅ Complete  
 **Rules:** 42 total  
 **Applies to:** ALL payment software regardless of function or technology
+
+**Tool Files:**
+- Semgrep: `rules/semgrep/pci-dss/core.yaml`
+- ESLint: `rules/eslint/pci-dss/pci-dss-core.js`
+- SonarQube: `rules/sonarqube/pci-dss-quality-profile.xml`
 
 **Coverage:**
 - Secure software development practices
@@ -65,9 +90,14 @@ The PCI SSS is organized into four requirement modules:
 
 ### Module A: Account Data Protection (COMPLETE)
 **File:** [module-a-account-data.md](module-a-account-data.md)  
-**Status:** Complete  
+**Status:** ✅ Complete  
 **Rules:** 60+ total  
 **Applies to:** Software that stores, processes, or transmits account data
+
+**Tool Files:**
+- Semgrep: `rules/semgrep/pci-dss/module-a.yaml`
+- ESLint: `rules/eslint/pci-dss/pci-dss-module-a.js`
+- SonarQube: Included in main quality profile
 
 **Coverage:**
 - Sensitive Authentication Data (SAD) protection
@@ -101,9 +131,14 @@ The PCI SSS is organized into four requirement modules:
 
 ### Module B: Terminal Software (COMPLETE)
 **File:** [module-b-terminal.md](module-b-terminal.md)  
-**Status:** Complete  
+**Status:** ✅ Complete  
 **Rules:** 30+ total  
 **Applies to:** Software designed for PCI-approved POI (Point of Interaction) devices
+
+**Tool Files:**
+- Semgrep: `rules/semgrep/pci-dss/module-b.yaml`
+- ESLint: Not applicable (terminal software uses C/C++)
+- SonarQube: C/C++ profile included
 
 **Coverage:**
 - PIN security and encryption
@@ -140,9 +175,14 @@ The PCI SSS is organized into four requirement modules:
 
 ### Module C: Web Software (COMPLETE)
 **File:** [module-c-web.md](module-c-web.md)  
-**Status:** Complete  
+**Status:** ✅ Complete  
 **Rules:** 40+ total  
 **Applies to:** Web-based payment software using Internet technologies
+
+**Tool Files:**
+- Semgrep: `rules/semgrep/pci-dss/module-c.yaml`
+- ESLint: `rules/eslint/pci-dss/pci-dss-module-c.js`
+- SonarQube: JavaScript profile included
 
 **Coverage:**
 - Web application input validation and output encoding
@@ -177,10 +217,50 @@ The PCI SSS is organized into four requirement modules:
 
 ---
 
+## Tool Implementation Guides
+
+### Semgrep Rules
+**Location:** `rules/semgrep/pci-dss/`
+**Documentation:** [Semgrep PCI DSS README](../../rules/semgrep/pci-dss/README.md)
+
+```bash
+# Quick start
+semgrep --config rules/semgrep/pci-dss/ ./your-code/
+
+# Specific module
+semgrep --config rules/semgrep/pci-dss/module-a.yaml ./payment-service/
+```
+
+### ESLint Configuration
+**Location:** `rules/eslint/pci-dss/`
+**Documentation:** [ESLint PCI DSS README](../../rules/eslint/pci-dss/README.md)
+
+```javascript
+// .eslintrc.js
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js',
+    './rules/eslint/pci-dss/pci-dss-module-a.js',
+    './rules/eslint/pci-dss/pci-dss-module-c.js'
+  ]
+};
+```
+
+### SonarQube Quality Profile
+**Location:** `rules/sonarqube/`
+**Documentation:** [SonarQube PCI DSS README](../../rules/sonarqube/pci-dss/README.md)
+
+1. Import `pci-dss-quality-profile.xml` in SonarQube
+2. Apply to your projects
+3. Configure quality gate for PCI compliance
+
+---
+
 ## Quick Reference by Language
 
 ### Python (Flask/Django)
 **Applicable Modules:** Core, Module A, Module C
+**Tools:** Semgrep, SonarQube
 
 **Common Issues:**
 - SQL injection via f-strings or string concatenation
@@ -198,6 +278,7 @@ The PCI SSS is organized into four requirement modules:
 
 ### JavaScript/TypeScript (Node.js/Express/React)
 **Applicable Modules:** Core, Module A, Module C
+**Tools:** Semgrep, ESLint, SonarQube
 
 **Common Issues:**
 - innerHTML with user data (XSS)
@@ -215,6 +296,7 @@ The PCI SSS is organized into four requirement modules:
 
 ### Java (Spring Boot)
 **Applicable Modules:** Core, Module A, Module C
+**Tools:** Semgrep, SonarQube
 
 **Common Issues:**
 - SQL injection via string concatenation
@@ -230,6 +312,7 @@ The PCI SSS is organized into four requirement modules:
 
 ### C/C++ (Terminal Software)
 **Applicable Modules:** Core, Module A, Module B
+**Tools:** Semgrep, SonarQube
 
 **Common Issues:**
 - Buffer overflows (strcpy, sprintf)
@@ -251,13 +334,13 @@ The PCI SSS is organized into four requirement modules:
 
 ### By Module
 
-| Module | Rules | Languages | Status |
-|--------|-------|-----------|--------|
-| Core Requirements | 42 | Python, JS, Java, Go, C | ✅ Complete |
-| Module A: Account Data | 60+ | Python, JS, Java, PHP, Ruby | ✅ Complete |
-| Module B: Terminal | 30+ | C, C++, Java (embedded) | ✅ Complete |
-| Module C: Web Software | 40+ | Python, JS, TypeScript, HTML | ✅ Complete |
-| **Total** | **170+** | **Multiple** | **✅ Complete** |
+| Module | Documentation | Semgrep | ESLint | SonarQube |
+|--------|---------------|---------|--------|-----------|
+| Core Requirements | ✅ 42 rules | ✅ Complete | ✅ Complete | ✅ Complete |
+| Module A: Account Data | ✅ 60+ rules | ✅ Complete | ✅ Complete | ✅ Complete |
+| Module B: Terminal | ✅ 30+ rules | ✅ Complete | N/A | ✅ Complete |
+| Module C: Web Software | ✅ 40+ rules | ✅ Complete | ✅ Complete | ✅ Complete |
+| **Total** | **✅ 170+ rules** | **✅ All modules** | **✅ JS/TS modules** | **✅ All languages** |
 
 ### By Severity
 
@@ -350,106 +433,43 @@ The PCI SSS is organized into four requirement modules:
 17. Dependency updates
 18. Security monitoring and logging
 19. Incident response procedures
-20. Security training for developers
+20. Annual compliance review
 
 ---
 
-## Testing Your Implementation
+## Common Violations Examples
 
-### Automated Testing
-
-**Semgrep (Recommended)**
-```bash
-# Install Semgrep
-pip install semgrep
-
-# Scan with all PCI DSS rules
-semgrep --config rules/semgrep/pci-dss/ ./your-code
-
-# Scan specific module
-semgrep --config rules/semgrep/pci-dss/module-a.yaml ./payment-module
-
-# Output formats
-semgrep --config rules/semgrep/pci-dss/ --json ./code > results.json
-semgrep --config rules/semgrep/pci-dss/ --sarif ./code > results.sarif
-```
-
-**ESLint (JavaScript/TypeScript)**
-```bash
-# Install ESLint and our config
-npm install --save-dev eslint
-
-# Run with PCI DSS rules
-eslint --config rules/eslint/pci-dss.js ./src
-```
-
-**SonarQube (Enterprise)**
-```bash
-# Import quality profile
-# Then run sonar-scanner
-sonar-scanner -Dsonar.profile=PCI-DSS-Compliance
-```
-
-### Manual Testing Checklist
-
-**Payment Data Protection:**
-- [ ] No CVV, PIN, or track data stored anywhere
-- [ ] PAN encrypted at rest
-- [ ] PAN masked in UI (only first 6 and last 4 visible)
-- [ ] No PAN in logs, URLs, or error messages
-- [ ] TLS 1.2+ for all payment transactions
-
-**Authentication & Session:**
-- [ ] Passwords meet complexity requirements (12+ chars or 8+ with complexity)
-- [ ] MFA enabled for administrative functions
-- [ ] Sessions timeout after 15-30 minutes
-- [ ] Session IDs regenerated after login
-- [ ] Cookies have Secure, HTTPOnly, SameSite flags
-
-**Web Security:**
-- [ ] All payment pages use HTTPS
-- [ ] Security headers present (CSP, HSTS, X-Frame-Options)
-- [ ] Input validated server-side
-- [ ] Output properly encoded
-- [ ] No PAN in localStorage/sessionStorage
-
-**API Security:**
-- [ ] All API endpoints require authentication
-- [ ] Rate limiting implemented
-- [ ] CORS properly configured
-- [ ] Request signing for webhooks
-
----
-
-## Common Violations and Fixes
-
-### Critical Violations
-
-#### 1. CVV Storage After Authorization
+### 1. CVV Storage (CRITICAL)
 **Violation:**
-```python
-# WRONG - Never do this
-transaction = {
-    'card_number': card,
-    'cvv': cvv,  # VIOLATION
-    'amount': amount
-}
-db.save(transaction)
+```javascript
+// WRONG - Never store CVV
+const payment = {
+  cardNumber: req.body.cardNumber,
+  cvv: req.body.cvv, // VIOLATION
+  expiry: req.body.expiry
+};
+database.save(payment);
 ```
 
 **Fix:**
-```python
-# CORRECT - Use CVV only for authorization, never store
-auth_result = payment_gateway.authorize(card, cvv, amount)
-transaction = {
-    'card_token': auth_result.token,
-    'amount': amount,
-    'auth_code': auth_result.code
-}
-db.save(transaction)  # CVV never stored
+```javascript
+// CORRECT - Use CVV only for authorization
+const authResult = await gateway.authorize({
+  cardNumber: req.body.cardNumber,
+  cvv: req.body.cvv, // Used transiently
+  expiry: req.body.expiry
+});
+
+// Store only non-sensitive data
+const payment = {
+  last4: req.body.cardNumber.slice(-4),
+  authCode: authResult.authCode,
+  tokenId: authResult.token
+};
+database.save(payment);
 ```
 
-#### 2. Hardcoded Encryption Key
+### 2. Hardcoded Encryption Key
 **Violation:**
 ```python
 # WRONG
@@ -468,7 +488,7 @@ response = kms.decrypt(
 encryption_key = response['Plaintext']
 ```
 
-#### 3. PAN in Browser Storage
+### 3. PAN in Browser Storage
 **Violation:**
 ```javascript
 // WRONG
@@ -543,8 +563,8 @@ Top CWEs addressed:
 
 ### Tool Documentation
 - [Semgrep Rules](../../rules/semgrep/pci-dss/README.md)
-- [ESLint Configuration](../../rules/eslint/README.md)
-- [SonarQube Profiles](../../rules/sonarqube/README.md)
+- [ESLint Configuration](../../rules/eslint/pci-dss/README.md)
+- [SonarQube Profiles](../../rules/sonarqube/pci-dss/README.md)
 
 ### Related Standards
 - [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/)
@@ -560,35 +580,13 @@ Top CWEs addressed:
 
 ## Contributing
 
-Found an issue or want to add more rules? See our [Contributing Guide](../../CONTRIBUTING.md).
+Found an issue or want to add more rules? See [CONTRIBUTING.md](../../CONTRIBUTING.md)
 
-### How to Contribute
-1. Report false positives or false negatives
-2. Suggest new rules for uncovered requirements
-3. Improve existing rule detection patterns
-4. Add support for additional languages
-5. Provide real-world code examples
-
----
-
-## Support and Questions
-
-- **Issues:** [GitHub Issues](https://github.com/cj-juntunen/security-framework-linters/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/cj-juntunen/security-framework-linters/discussions)
-- **Security:** Report security issues privately via GitHub Security Advisories
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](../../LICENSE) file for details.
-
-## Disclaimer
-
-These rules are provided as a tool to help identify potential compliance issues. They do not guarantee PCI DSS compliance and should not be considered legal advice. Always consult with a Qualified Security Assessor (QSA) for official compliance validation.
-
----
-
-**Last Updated:** 2025-11-19  
 **Repository:** https://github.com/cj-juntunen/security-framework-linters  
-**Maintainer:** cj-juntunen
+**Issues:** https://github.com/cj-juntunen/security-framework-linters/issues  
+**Discussions:** https://github.com/cj-juntunen/security-framework-linters/discussions
+
+---
+
+**Last Updated:** November 19, 2025  
+**License:** MIT
