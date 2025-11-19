@@ -60,7 +60,7 @@ sonar.qualityprofile=PCI-DSS-Compliance-CPP
 
 ## Profile Contents
 
-### 🔴 BLOCKER Rules (Must Fix)
+### BLOCKER Rules (Must Fix)
 
 These violations represent critical PCI DSS failures:
 
@@ -72,7 +72,7 @@ These violations represent critical PCI DSS failures:
 | S2278 | Weak Encryption (DES/3DES) | 3.4 - Strong cryptography |
 | S4790 | Weak Hashing (MD5/SHA1) | 3.4 - Render PAN unreadable |
 
-### 🟡 CRITICAL Rules (High Priority)
+### CRITICAL Rules (High Priority)
 
 | Rule | Description | PCI DSS Requirement |
 |------|-------------|---------------------|
@@ -267,9 +267,9 @@ Security hotspots are code patterns that require manual review to determine if t
    - Examine the code context
    - Check for compensating controls
 3. **Set Status**:
-   - ✅ **Safe** - No vulnerability exists
-   - 🔧 **Fixed** - Vulnerability was remediated
-   - ⚠️ **Acknowledged** - Risk accepted (document why!)
+   - **Safe** - No vulnerability exists
+   - **Fixed** - Vulnerability was remediated
+   - **Acknowledged** - Risk accepted (document why!)
 
 ### Common PCI DSS Hotspots
 
