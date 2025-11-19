@@ -1348,3 +1348,6 @@ rules:
 # 
 # Usage:
 #   semgrep --config rules/semgrep/pci-dss/core.yaml /path/to/code
+#
+# Repository:
+#   https://github.com/cj-juntunen/security-framework-linters
