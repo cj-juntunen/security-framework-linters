@@ -18,6 +18,51 @@ These ESLint rules help developers identify and prevent security vulnerabilities
 | `pci-dss-module-a.js` | Account data protection | PAN handling, CVV restrictions, encryption |
 | `pci-dss-module-c.js` | Web application security | XSS, CSRF, session management, browser security |
 
+## Why Module B is Not Included
+
+Module B of the PCI SSS specifically addresses **payment terminal software** - applications that run on physical point-of-sale (POS) devices, PIN entry devices, and other payment terminals. This module is not included in our ESLint rules for several important reasons:
+
+### 1. Language Mismatch
+Terminal software is typically written in **C/C++** or other low-level languages for performance and hardware interaction, while ESLint is specifically designed for **JavaScript/TypeScript** analysis.
+
+### 2. Hardware-Specific Requirements
+Module B requirements focus on:
+- Hardware security modules (HSM)
+- Secure cryptographic devices (SCD)
+- Physical tamper detection
+- PIN encryption in secure hardware
+- Firmware integrity checks
+
+These are **hardware-level security controls** that cannot be verified through JavaScript static analysis.
+
+### 3. Specialized Development Environment
+Terminal software development requires:
+- PCI PTS (PIN Transaction Security) certified hardware
+- Specialized SDKs and toolchains
+- Hardware debugging capabilities
+- Secure boot and firmware signing infrastructure
+
+### 4. Different Threat Model
+Web applications (Module C) face threats like XSS and CSRF, while terminal software must defend against:
+- Physical tampering
+- Side-channel attacks
+- Memory dumps
+- Firmware modification
+
+### What If You're Building Terminal Software?
+
+If you're developing payment terminal software:
+1. Use appropriate C/C++ static analysis tools (not ESLint)
+2. Refer to our **SonarQube PCI-DSS-Compliance-CPP** profile
+3. Consider tools like:
+   - PC-lint Plus for C/C++
+   - Coverity or Fortify for embedded systems
+   - PVS-Studio for C/C++ analysis
+4. Ensure compliance with PCI PTS POI requirements
+5. Work with certified PCI PTS laboratories for validation
+
+For JavaScript-based point-of-sale applications that run in browsers or on tablets (not payment terminals), use Module C rules instead.
+
 ## Installation
 
 ### 1. Install ESLint and Required Plugins
