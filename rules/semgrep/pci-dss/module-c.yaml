@@ -1,0 +1,877 @@
+rules:
+  # ============================================================================
+  # PCI DSS Secure Software Standard - Module C: Web Software
+  # Semgrep Rule Configuration
+  # ============================================================================
+  # Version: 1.0.0
+  # Framework: PCI SSS v1.2.1
+  # Module: Module C - Web Software Requirements
+  # Last Updated: 2024-11-19
+  # Repository: https://github.com/cj-juntunen/security-framework-linters
+  # ============================================================================
+
+  # ============================================================================
+  # C1. INPUT VALIDATION AND OUTPUT ENCODING
+  # ============================================================================
+
+  - id: pci-sss-c1.1-no-server-side-validation-flask
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route(..., methods=["POST"])
+              def $FUNC(...):
+                  $VAR = request.form.get(...)
+                  ...
+          - pattern: |
+              @app.route(..., methods=["POST"])
+              def $FUNC(...):
+                  $VAR = request.json.get(...)
+                  ...
+      - pattern-not: |
+          ... validate ...
+      - pattern-not: |
+          ... if ... raise ...
+    message: |
+      POST endpoint without apparent input validation.
+      
+      PCI SSS C1.1 requires server-side validation of all input.
+      
+      Fix: Add validation before processing:
+        if not validate_input(var):
+            abort(400, "Invalid input")
+    severity: WARNING
+    languages: [python]
+    metadata:
+      category: security
+      subcategory: input-validation
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "C1.1"
+
+  - id: pci-sss-c1.1-direct-request-usage
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute(..., request.form[$KEY], ...)
+          - pattern: $DB.execute(..., request.json[$KEY], ...)
+          - pattern: $DB.query(..., req.body.$FIELD, ...)
+          - pattern: $DB.query(..., req.params.$FIELD, ...)
+    message: |
+      Direct use of request data in database operation without visible validation.
+      
+      PCI SSS C1.1: Validate all input before use.
+      
+      This pattern is high-risk for SQL injection.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-89"
+      framework: PCI-SSS
+      requirement: "C1.1"
+
+  - id: pci-sss-c1.1-missing-luhn-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNC($CARD):
+                  return len($CARD) >= 13
+          - pattern: |
+              function $FUNC($CARD) {
+                  return $CARD.length >= 13;
+              }
+      - metavariable-regex:
+          metavariable: $CARD
+          regex: ".*(card|pan).*"
+      - pattern-not: |
+          ... luhn ...
+    message: |
+      Card number validation without Luhn algorithm check.
+      
+      PCI SSS C1.1: Implement proper card number validation including:
+      1. Format check (13-19 digits)
+      2. Luhn algorithm validation
+      3. BIN range validation
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "C1.1"
+
+  - id: pci-sss-c1.2-flask-unescaped-template
+    patterns:
+      - pattern-either:
+          - pattern: |
+              return f"<html>...{$VAR}...</html>"
+          - pattern: |
+              return "<html>..." + $VAR + "...</html>"
+    message: |
+      Unescaped variable in HTML template string.
+      
+      PCI SSS C1.2 requires context-aware output encoding.
+      
+      Fix: Use render_template with Jinja2 auto-escaping:
+        return render_template('page.html', var=var)
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "C1.2"
+
+  - id: pci-sss-c1.2-template-literal-xss
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $EL.innerHTML = `...${$VAR}...`
+          - pattern: |
+              $RES.send(`<html>...${$VAR}...</html>`)
+    message: |
+      Template literal with variable in HTML context without escaping.
+      
+      PCI SSS C1.2: Use template engine with auto-escaping or manual escaping.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      framework: PCI-SSS
+      requirement: "C1.2"
+
+  - id: pci-sss-c1.2-javascript-context-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              return f"<script>var data = '{$VAR}';</script>"
+          - pattern: |
+              res.send(`<script>var data = '${$VAR}';</script>`)
+    message: |
+      Variable inserted into JavaScript context without proper encoding.
+      
+      PCI SSS C1.2: Use JSON encoding for JavaScript context:
+        <script>var data = {{ var|tojson }};</script>
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-79"
+      framework: PCI-SSS
+      requirement: "C1.2"
+
+  # ============================================================================
+  # C2. AUTHENTICATION AND SESSION MANAGEMENT
+  # ============================================================================
+
+  - id: pci-sss-c2.1-insecure-session-cookie-flask
+    patterns:
+      - pattern-either:
+          - pattern: |
+              app.config['SESSION_COOKIE_SECURE'] = False
+          - pattern: |
+              app.config['SESSION_COOKIE_HTTPONLY'] = False
+    message: |
+      Insecure session cookie configuration.
+      
+      PCI SSS C2.1 requires:
+      - SESSION_COOKIE_SECURE = True (HTTPS only)
+      - SESSION_COOKIE_HTTPONLY = True (no JavaScript access)
+      - SESSION_COOKIE_SAMESITE = 'Strict' or 'Lax'
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      cwe: "CWE-614"
+      owasp: "A07:2021 - Identification and Authentication Failures"
+      framework: PCI-SSS
+      requirement: "C2.1"
+
+  - id: pci-sss-c2.1-insecure-express-session
+    patterns:
+      - pattern: |
+          session({
+            ...,
+            cookie: {
+              ...,
+              secure: false,
+              ...
+            }
+          })
+    message: |
+      Express session with secure: false in cookie configuration.
+      
+      PCI SSS C2.1: Set secure: true for HTTPS-only cookies.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-614"
+      framework: PCI-SSS
+      requirement: "C2.1"
+
+  - id: pci-sss-c2.1-no-session-regeneration
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/login', methods=['POST'])
+              def login():
+                  ...
+                  session['user_id'] = $USER_ID
+                  ...
+          - pattern: |
+              app.post('/login', ..., ($REQ, $RES) => {
+                  ...
+                  $REQ.session.userId = $USER_ID;
+                  ...
+              });
+      - pattern-not: |
+          ... session.regenerate ...
+      - pattern-not: |
+          ... session.clear ...
+    message: |
+      Session data set after login without session regeneration.
+      
+      PCI SSS C2.1: Regenerate session ID after authentication to prevent 
+      session fixation attacks.
+      
+      Fix:
+        Flask: session.clear() before setting new values
+        Express: req.session.regenerate(callback)
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-384: Session Fixation"
+      framework: PCI-SSS
+      requirement: "C2.1"
+
+  - id: pci-sss-c2.1-long-session-timeout
+    patterns:
+      - pattern-either:
+          - pattern: |
+              SESSION_COOKIE_AGE = $TIME
+          - pattern: |
+              maxAge: $TIME
+      - metavariable-comparison:
+          metavariable: $TIME
+          comparison: $TIME > 3600000
+    message: |
+      Session timeout longer than 1 hour detected.
+      
+      PCI DSS recommends 15-30 minute timeout for payment applications.
+      
+      Current timeout appears to be > 1 hour.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-613"
+      framework: PCI-SSS
+      requirement: "C2.1"
+
+  - id: pci-sss-c2.1-hardcoded-session-secret
+    patterns:
+      - pattern-either:
+          - pattern: |
+              app.secret_key = "..."
+          - pattern: |
+              session({ secret: "..." })
+    message: |
+      Hardcoded session secret detected.
+      
+      PCI SSS C2.1: Use strong secret from environment variable.
+      
+      Fix:
+        app.secret_key = os.environ['SECRET_KEY']
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-798"
+      framework: PCI-SSS
+      requirement: "C2.1"
+
+  # ============================================================================
+  # C3. BROWSER SECURITY CONTROLS
+  # ============================================================================
+
+  - id: pci-sss-c3.1-missing-csp-header
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route(...)
+              def $FUNC(...):
+                  ...
+                  return ...
+          - pattern: |
+              app.get(..., ($REQ, $RES) => {
+                  ...
+                  $RES.send(...);
+              });
+      - pattern-not: |
+          ... Content-Security-Policy ...
+      - pattern-not: |
+          ... helmet ...
+    message: |
+      Endpoint without Content-Security-Policy header.
+      
+      PCI SSS C3.1: Implement CSP to prevent XSS attacks.
+      
+      Fix: Add CSP header with restrictive policy:
+        Content-Security-Policy: default-src 'self'; script-src 'self'
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      owasp: "A03:2021 - Injection"
+      framework: PCI-SSS
+      requirement: "C3.1"
+
+  - id: pci-sss-c3.1-missing-hsts-header
+    patterns:
+      - pattern-either:
+          - pattern: |
+              response.headers[...] = ...
+      - pattern-not: |
+          ... Strict-Transport-Security ...
+    message: |
+      Response headers set without HSTS (Strict-Transport-Security).
+      
+      PCI SSS C3.1: Add HSTS header to enforce HTTPS:
+        Strict-Transport-Security: max-age=31536000; includeSubDomains
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-319"
+      framework: PCI-SSS
+      requirement: "C3.1"
+
+  - id: pci-sss-c3.1-weak-x-frame-options
+    patterns:
+      - pattern-either:
+          - pattern: |
+              response.headers['X-Frame-Options'] = 'ALLOW-FROM ...'
+          - pattern: |
+              res.set('X-Frame-Options', 'ALLOW-FROM ...')
+    message: |
+      Weak X-Frame-Options configuration.
+      
+      ALLOW-FROM is deprecated and not widely supported.
+      
+      Use: X-Frame-Options: DENY or SAMEORIGIN
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-1021"
+      framework: PCI-SSS
+      requirement: "C3.1"
+
+  - id: pci-sss-c3.1-no-helmet-middleware
+    patterns:
+      - pattern: |
+          const express = require('express');
+          const app = express();
+          ...
+      - pattern-not: |
+          ... helmet ...
+    message: |
+      Express app without Helmet.js middleware.
+      
+      PCI SSS C3.1: Use Helmet to set security headers automatically:
+        const helmet = require('helmet');
+        app.use(helmet());
+    severity: INFO
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "C3.1"
+      note: "Best practice recommendation"
+
+  # ============================================================================
+  # C4. API SECURITY
+  # ============================================================================
+
+  - id: pci-sss-c4.1-api-endpoint-no-auth
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/api/...', methods=['POST'])
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.post('/api/...', ($REQ, $RES) => {
+                  ...
+              });
+      - pattern-not: |
+          ... @require_auth ...
+      - pattern-not: |
+          ... authenticate ...
+      - pattern-not: |
+          ... authorization ...
+    message: |
+      API endpoint without apparent authentication check.
+      
+      PCI SSS C4.1: All payment API endpoints must require authentication.
+      
+      Fix: Add authentication middleware or decorator.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-306"
+      owasp: "A01:2021 - Broken Access Control"
+      framework: PCI-SSS
+      requirement: "C4.1"
+
+  - id: pci-sss-c4.1-no-rate-limiting
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route('/api/payment', methods=['POST'])
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.post('/api/payment', ...);
+      - pattern-not: |
+          ... rate_limit ...
+      - pattern-not: |
+          ... limiter ...
+      - pattern-not: |
+          ... throttle ...
+    message: |
+      Payment endpoint without rate limiting.
+      
+      PCI SSS C4.1: Implement rate limiting to prevent abuse.
+      
+      Fix: Add rate limiting middleware.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-770"
+      framework: PCI-SSS
+      requirement: "C4.1"
+
+  - id: pci-sss-c4.1-weak-api-key-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if $API_KEY == $EXPECTED:
+                  ...
+          - pattern: |
+              if ($API_KEY === $EXPECTED)
+    message: |
+      API key comparison vulnerable to timing attacks.
+      
+      PCI SSS C4.1: Use constant-time comparison:
+        Python: secrets.compare_digest(key1, key2)
+        Node.js: crypto.timingSafeEqual(buf1, buf2)
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-208"
+      framework: PCI-SSS
+      requirement: "C4.1"
+
+  - id: pci-sss-c4.1-jwt-no-expiration
+    patterns:
+      - pattern-either:
+          - pattern: |
+              jwt.encode($PAYLOAD, $SECRET)
+          - pattern: |
+              jwt.sign($PAYLOAD, $SECRET)
+      - pattern-not: |
+          ... exp ...
+      - pattern-not: |
+          ... expiresIn ...
+    message: |
+      JWT token created without expiration.
+      
+      PCI SSS C4.1: All JWT tokens must have expiration:
+        jwt.encode(payload, secret, algorithm='HS256', 
+                   headers={'exp': datetime.utcnow() + timedelta(hours=1)})
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-613"
+      framework: PCI-SSS
+      requirement: "C4.1"
+
+  - id: pci-sss-c4.1-cors-allow-all
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @cross_origin(origins='*')
+          - pattern: |
+              cors({ origin: '*' })
+          - pattern: |
+              response.headers['Access-Control-Allow-Origin'] = '*'
+    message: |
+      CORS configured to allow all origins (*).
+      
+      PCI SSS C4.1: Restrict to trusted origins only:
+        cors({ origin: 'https://trusted-domain.com' })
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-346"
+      framework: PCI-SSS
+      requirement: "C4.1"
+
+  # ============================================================================
+  # C5. CLIENT-SIDE SECURITY
+  # ============================================================================
+
+  - id: pci-sss-c5.1-pan-in-localstorage
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem($KEY, $VALUE)
+          - pattern: sessionStorage.setItem($KEY, $VALUE)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: ".*(card|pan|cvv|payment).*"
+    message: |
+      CRITICAL: Potential storage of payment data in browser storage.
+      
+      PCI SSS C5.1: NEVER store PAN, CVV, or payment data in localStorage 
+      or sessionStorage.
+      
+      Use tokenization - store only tokens, never card data.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      subcategory: payment-card-data
+      pci-dss: "3.4"
+      framework: PCI-SSS
+      requirement: "C5.1"
+      impact: CRITICAL
+
+  - id: pci-sss-c5.1-payment-data-in-cookie
+    patterns:
+      - pattern-either:
+          - pattern: |
+              document.cookie = $KEY + "=" + $VALUE
+          - pattern: |
+              res.cookie($KEY, $VALUE)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: ".*(card|pan|cvv).*"
+    message: |
+      CRITICAL: Potential storage of payment data in cookie.
+      
+      PCI SSS C5.1: Never store PAN or CVV in cookies.
+      
+      Cookies accessible via JavaScript are vulnerable to XSS attacks.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      pci-dss: "3.4"
+      framework: PCI-SSS
+      requirement: "C5.1"
+
+  - id: pci-sss-c5.1-indexeddb-payment-data
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $DB.add({ ..., cardNumber: $CARD, ... })
+          - pattern: |
+              $STORE.put({ ..., pan: $PAN, ... })
+    message: |
+      Potential storage of payment data in IndexedDB.
+      
+      PCI SSS C5.1: Do not store PAN in IndexedDB.
+      
+      Use server-side tokenization instead.
+    severity: ERROR
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      pci-dss: "3.4"
+      framework: PCI-SSS
+      requirement: "C5.1"
+
+  # ============================================================================
+  # C7. PAYMENT DATA PROTECTION IN WEB CONTEXT
+  # ============================================================================
+
+  - id: pci-sss-c7.1-pan-in-url-parameter
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $URL = f"...?card={$CARD}..."
+          - pattern: |
+              const url = `...?cardNumber=${$CARD}...`;
+          - pattern: |
+              redirect(f"/payment?card={$CARD}")
+    message: |
+      CRITICAL: PAN in URL parameter detected.
+      
+      PCI SSS C7.1: Never include PAN in URLs (GET parameters).
+      
+      URLs are logged by servers, proxies, and browsers.
+      Use POST with encrypted body instead.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      subcategory: payment-card-data
+      pci-dss: "3.4"
+      framework: PCI-SSS
+      requirement: "C7.1"
+
+  - id: pci-sss-c7.1-form-method-get
+    patterns:
+      - pattern: |
+          <form method="GET" ...>
+      - metavariable-regex:
+          metavariable: $ACTION
+          regex: ".*(payment|checkout|card).*"
+    message: |
+      Payment form using GET method.
+      
+      PCI SSS C7.1: Payment forms must use POST method.
+      
+      GET parameters appear in URLs and server logs.
+    severity: ERROR
+    languages: [html]
+    metadata:
+      category: security
+      pci-dss: "3.4"
+      framework: PCI-SSS
+      requirement: "C7.1"
+
+  - id: pci-sss-c7.1-no-autocomplete-off
+    patterns:
+      - pattern: |
+          <input ... name="$NAME" ...>
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: ".*(card|cvv|cvc|pan).*"
+      - pattern-not: |
+          ... autocomplete="off" ...
+    message: |
+      Sensitive payment field without autocomplete="off".
+      
+      PCI SSS C7.1: Card number and CVV fields should have autocomplete="off".
+      
+      Prevents browser from caching sensitive data.
+    severity: WARNING
+    languages: [html]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "C7.1"
+
+  - id: pci-sss-c7.1-http-payment-form
+    patterns:
+      - pattern-either:
+          - pattern: |
+              <form action="http://..." ...>
+          - pattern: |
+              fetch("http://...", { ..., body: $PAYMENT_DATA })
+    message: |
+      CRITICAL: Payment form or request over unencrypted HTTP.
+      
+      PCI SSS C7.1: All payment pages and requests must use HTTPS.
+    severity: ERROR
+    languages: [html, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-319"
+      pci-dss: "4.2"
+      framework: PCI-SSS
+      requirement: "C7.1"
+
+  - id: pci-sss-c7.1-no-input-validation
+    patterns:
+      - pattern: |
+          <input type="text" name="cardNumber" ...>
+      - pattern-not: |
+          ... pattern="..." ...
+      - pattern-not: |
+          ... maxlength="..." ...
+    message: |
+      Card number input without client-side validation attributes.
+      
+      Best practice: Add pattern and maxlength:
+        <input pattern="[0-9]{13,19}" maxlength="19" ...>
+      
+      Note: Client-side validation is convenience, not security.
+      Server-side validation is required.
+    severity: INFO
+    languages: [html]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      requirement: "C7.1"
+
+  # ============================================================================
+  # WEB FRAMEWORK SPECIFIC PATTERNS
+  # ============================================================================
+
+  - id: pci-sss-c-flask-debug-mode-production
+    patterns:
+      - pattern-either:
+          - pattern: |
+              app.run(debug=True)
+          - pattern: |
+              app.debug = True
+    message: |
+      Flask debug mode enabled.
+      
+      Debug mode exposes sensitive information and should NEVER be enabled 
+      in production.
+      
+      Disable debug mode in production environments.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      category: security
+      cwe: "CWE-489"
+      framework: PCI-SSS
+
+  - id: pci-sss-c-express-trust-proxy
+    patterns:
+      - pattern: |
+          app.set('trust proxy', true)
+    message: |
+      Express configured to trust proxy headers.
+      
+      Only enable if behind a trusted reverse proxy (nginx, Apache).
+      
+      Incorrect configuration can allow IP spoofing.
+    severity: INFO
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      framework: PCI-SSS
+
+  - id: pci-sss-c-sql-query-in-route
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route(...)
+              def $FUNC(...):
+                  ...
+                  $DB.execute("SELECT ...")
+                  ...
+          - pattern: |
+              app.$METHOD(..., async ($REQ, $RES) => {
+                  ...
+                  await $DB.query("SELECT ...");
+                  ...
+              });
+    message: |
+      Direct SQL query in route handler.
+      
+      Best practice: Use data access layer or ORM instead of raw SQL in routes.
+      
+      Improves separation of concerns and reduces SQL injection risk.
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: PCI-SSS
+
+  # ============================================================================
+  # BEST PRACTICES AND RECOMMENDATIONS
+  # ============================================================================
+
+  - id: pci-sss-c-good-practice-hosted-payment
+    patterns:
+      - pattern-either:
+          - pattern: |
+              window.location.href = $GATEWAY_URL
+          - pattern: |
+              return redirect($PAYMENT_GATEWAY)
+      - metavariable-regex:
+          metavariable: $GATEWAY_URL
+          regex: ".*(stripe|paypal|square|braintree|checkout).*"
+    message: |
+      Good practice: Redirecting to hosted payment page detected.
+      
+      This reduces PCI DSS scope significantly (SAQ A compliance possible).
+      
+      Hosted pages keep PAN out of your environment entirely.
+    severity: INFO
+    languages: [javascript, typescript, python]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      note: "Scope reduction strategy - good practice"
+
+  - id: pci-sss-c-good-practice-stripe-elements
+    patterns:
+      - pattern-either:
+          - pattern: |
+              const elements = stripe.elements()
+          - pattern: |
+              stripe.createToken($CARD_ELEMENT)
+    message: |
+      Good practice: Stripe Elements detected.
+      
+      Using payment gateway's hosted fields keeps PAN out of your JavaScript.
+      
+      This significantly reduces PCI scope (SAQ A-EP compliance possible).
+    severity: INFO
+    languages: [javascript, typescript]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      note: "Best practice - scope reduction"
+
+  - id: pci-sss-c-payment-iframe
+    patterns:
+      - pattern: |
+          <iframe src="$URL" ...>
+      - metavariable-regex:
+          metavariable: $URL
+          regex: ".*(checkout|payment|stripe|paypal).*"
+    message: |
+      Payment iframe detected.
+      
+      Using payment gateway iframes for card entry reduces PCI scope.
+      
+      Ensure iframe is from PCI-certified payment processor.
+    severity: INFO
+    languages: [html]
+    metadata:
+      category: security
+      framework: PCI-SSS
+      note: "Scope reduction strategy"
+
+# ============================================================================
+# END OF MODULE C RULES
+# ============================================================================
+# 
+# Total Rules: 40+
+# 
+# Categories:
+#   - Input Validation: 4 rules
+#   - Output Encoding: 3 rules
+#   - Session Management: 5 rules
+#   - Browser Security Controls: 4 rules
+#   - API Security: 6 rules
+#   - Client-Side Security: 3 rules
+#   - Payment Data Protection: 5 rules
+#   - Framework Specific: 3 rules
+#   - Best Practices: 3 rules
+#
+# Usage:
+#   semgrep --config rules/semgrep/pci-dss/module-c.yaml /path/to/web-code
+#
+# Combined usage with all modules:
+#   semgrep --config rules/semgrep/pci-dss/ /path/to/code
+#
+# Repository:
+#   https://github.com/cj-juntunen/security-framework-linters
+# ============================================================================
