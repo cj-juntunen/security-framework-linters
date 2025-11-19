@@ -8,7 +8,7 @@ This directory contains comprehensive code-level compliance rules for the **PCI 
 
 The PCI SSS is organized into four requirement modules:
 
-### ✅ [Core Requirements](core-requirements.md)
+### [Core Requirements](core-requirements.md)
 **Status:** Complete  
 **Rules:** 42 total  
 **Coverage:** General security requirements for all payment software
@@ -21,12 +21,12 @@ Key areas:
 - Security logging
 - Secure configuration
 
-### 🚧 [Module A: Account Data Protection](module-a-account-data.md)
-**Status:** In Progress  
+### [Module A: Account Data Protection](module-a-account-data.md)
+**Status:** Completed 
 **Applies to:** Software that stores, processes, or transmits account data
 
 ###  Module B: Terminal Software
-**Status:** Planned  
+**Status:** Completed
 **Applies to:** Software for PCI-approved POI devices
 
 ###  Module C: Web Software
