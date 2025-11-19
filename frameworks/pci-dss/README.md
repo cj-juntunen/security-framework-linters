@@ -25,11 +25,11 @@ Key areas:
 **Status:** Completed 
 **Applies to:** Software that stores, processes, or transmits account data
 
-###  Module B: Terminal Software (module-b-terminal.md)
+### [Module B: Terminal Software](module-b-terminal.md)
 **Status:** Completed
 **Applies to:** Software for PCI-approved POI devices
 
-###  Module C: Web Software (module-c-web.md)
+### [Module C: Web Software](module-c-web.md)
 **Status:** Planned  
 **Applies to:** Web-based payment software
 
