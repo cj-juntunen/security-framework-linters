@@ -1351,5 +1351,5 @@ rules:
 #   semgrep --config rules/semgrep/pci-dss/ /path/to/code
 #
 # Repository:
-#   https://github.com/cj-juntunen/compliance-rules
+#   https://github.com/cj-juntunen/security-framework-linters
 # ============================================================================
