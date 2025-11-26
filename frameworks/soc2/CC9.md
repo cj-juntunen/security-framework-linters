@@ -2637,9 +2637,9 @@ def get_user_data(user_id):
 ### Related Documentation
 
 - **[SOC 2 Overview](README.md)** - Framework structure and guidance
-- **[CC6: Logical Access](security-criteria.md)** - Access control requirements
-- **[CC7: System Operations](cc7-system-operations.md)** - Operational security controls
-- **[CC8: Change Management](cc8-change-management.md)** - Change control processes
+- **[CC6: Logical Access](cc6.md)** - Access control requirements
+- **[CC7: System Operations](cc7.md)** - Operational security controls
+- **[CC8: Change Management](cc8.md)** - Change control processes
 
 ### Additional Resources
 
