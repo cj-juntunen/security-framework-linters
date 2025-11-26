@@ -2512,8 +2512,9 @@ def refresh_test_database():
 ### Related Documentation
 
 - **[SOC 2 Overview](README.md)** - Framework structure and guidance
-- **[CC6: Logical Access](security-criteria.md)** - Access control requirements
-- **[CC7: System Operations](cc7-system-operations.md)** - Operational security controls
+- **[CC6: Logical Access](cc6.md)** - Access control requirements
+- **[CC7: System Operations](cc7.md)** - Operational security controls
+- **[CC9: Risk Mitigation](cc9.md)** - Change control processes
 
 ### Additional Resources
 
