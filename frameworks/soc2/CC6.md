@@ -2,7 +2,7 @@
 
 **Standard Version:** AICPA Trust Services Criteria (2017)  
 **Document Version:** 1.0  
-**Last Updated:** 2025-11-27  
+**Last Updated:** 2025-11-26  
 **Module Type:** Security - Common Criteria
 
 ---
@@ -1732,9 +1732,9 @@ rules:
 ### Related Documentation
 
 - **[SOC 2 Overview](README.md)** - Framework structure and guidance
-- **[CC7: System Operations](cc7-system-operations.md)** - Operational security controls
-- **[CC8: Change Management](cc8-change-management.md)** - Change control processes
-- **[Integration Guide](../../docs/integration-guide.md)** - Tool setup and CI/CD integration
+- **[CC7: System Operations](cc6.md)** 
+- **[CC8: Change Management](cc8.md)** 
+- **[CC9: Risk Mitigation](cc9.md)** 
 
 ### Additional Resources
 
