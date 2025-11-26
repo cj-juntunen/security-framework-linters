@@ -2388,8 +2388,9 @@ cryptography==2.0  # VIOLATION: Old version with vulnerabilities
 ### Related Documentation
 
 - **[SOC 2 Overview](README.md)** - Framework structure and guidance
-- **[CC6: Logical Access](CC6.md)** - Access control requirements
-- **[CC8: Change Management](CC8.md)** - Change control processes
+- **[CC6: Logical Access](cc6.md)** - Access control requirements
+- **[CC8: Change Management](cc8.md)** - Change control processes
+- **[CC9: Risk Mitigation](cc9.md)** - Risk mitigation
 
 ### Additional Resources
 
