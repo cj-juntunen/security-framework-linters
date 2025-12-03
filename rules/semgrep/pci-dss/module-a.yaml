@@ -1,3 +1,4 @@
+---
 rules:
   # ============================================================================
   # PCI DSS Secure Software Standard - Module A: Account Data Protection
@@ -277,8 +278,7 @@ rules:
       framework: PCI-SSS
       requirement: "A2.1"
       confidence: MEDIUM
-
-  - id: pci-sss-a2.2-unmasked-pan-display
+- id: pci-sss-a2.2-unmasked-pan-display
   patterns:
     - pattern-either:
         - pattern: print(f"Card: {$CARD}")
