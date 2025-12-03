@@ -1,0 +1,64 @@
+# yamllint configuration for security-framework-linters
+# Repository: https://github.com/cj-juntunen/security-framework-linters
+
+extends: default
+
+rules:
+  # Line length
+  line-length:
+    max: 120
+    level: warning
+    allow-non-breakable-inline-mappings: true
+
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+    check-multi-line-strings: false
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+
+  # Truthy values
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+
+  # Brackets
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Braces
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Document start
+  document-start:
+    present: false
+
+  # Empty values
+  empty-values:
+    forbid-in-block-mappings: true
+    forbid-in-flow-mappings: true
+
+  # Key duplicates
+  key-duplicates: enable
+
+  # Trailing spaces
+  trailing-spaces: enable
+
+  # New line at end of file
+  new-line-at-end-of-file: enable
+
+# Ignore patterns
+ignore: |
+  node_modules/
+  .venv/
+  venv/
+  dist/
+  build/
+  .git/

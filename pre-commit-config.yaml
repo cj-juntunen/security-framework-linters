@@ -1,0 +1,183 @@
+# Pre-commit hooks for security-framework-linters
+# Repository: https://github.com/cj-juntunen/security-framework-linters
+#
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Usage:
+#   pre-commit run --all-files    # Run all hooks on all files
+#   pre-commit run <hook-id>      # Run specific hook
+#   git commit --no-verify        # Bypass hooks (not recommended)
+
+repos:
+  # YAML validation and formatting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        name: Validate YAML Syntax
+        args: [-c=.yamllint]
+        files: \.(yaml|yml)$
+        types: [file]
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+        exclude: \.min\.(js|css)$
+      
+      - id: end-of-file-fixer
+        name: Fix End of Files
+        exclude: \.min\.(js|css)$
+      
+      - id: check-yaml
+        name: Check YAML Syntax
+        args: [--unsafe]
+      
+      - id: check-json
+        name: Check JSON Syntax
+      
+      - id: check-xml
+        name: Check XML Syntax
+      
+      - id: check-added-large-files
+        name: Check for Large Files
+        args: [--maxkb=500]
+      
+      - id: check-merge-conflict
+        name: Check for Merge Conflicts
+      
+      - id: detect-private-key
+        name: Detect Private Keys
+      
+      - id: mixed-line-ending
+        name: Fix Mixed Line Endings
+        args: [--fix=lf]
+      
+      - id: check-case-conflict
+        name: Check for Case Conflicts
+      
+      - id: check-symlinks
+        name: Check for Broken Symlinks
+
+  # Markdown linting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        name: Lint Markdown Files
+        args: [--config=.markdownlint.json, --fix]
+
+  # Python formatting (for scripts)
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        name: Format Python Code
+        language_version: python3
+        files: \.py$
+
+  # Python linting (for scripts)
+  - repo: https://github.com/PyCQA/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        name: Lint Python Code
+        args: [--max-line-length=120]
+        files: \.py$
+
+  # Validate Semgrep rules
+  - repo: local
+    hooks:
+      - id: validate-semgrep-rules
+        name: Validate Semgrep Rules
+        entry: bash -c 'semgrep --validate --config rules/semgrep/ || exit 1'
+        language: system
+        pass_filenames: false
+        files: rules/semgrep/.*\.yaml$
+        stages: [commit]
+
+  # Validate ESLint configurations
+  - repo: local
+    hooks:
+      - id: validate-eslint-configs
+        name: Validate ESLint Configs
+        entry: bash -c 'for f in rules/eslint/*/.eslintrc.json; do echo "Validating $f..." && node -e "JSON.parse(require(\"fs\").readFileSync(\"$f\", \"utf8\"))" || exit 1; done'
+        language: system
+        pass_filenames: false
+        files: rules/eslint/.*\.json$
+        stages: [commit]
+
+  # Validate SonarQube profiles
+  - repo: local
+    hooks:
+      - id: validate-sonarqube-profiles
+        name: Validate SonarQube Profiles
+        entry: bash -c 'for f in rules/sonarqube/profiles/*.xml; do echo "Validating $f..." && xmllint --noout "$f" || exit 1; done'
+        language: system
+        pass_filenames: false
+        files: rules/sonarqube/.*\.xml$
+        stages: [commit]
+
+  # Test Semgrep rules (if test files exist)
+  - repo: local
+    hooks:
+      - id: test-semgrep-rules
+        name: Test Semgrep Rules
+        entry: bash -c 'if [ -d "tests/semgrep" ]; then semgrep --test --config rules/semgrep/ || exit 1; fi'
+        language: system
+        pass_filenames: false
+        files: rules/semgrep/.*\.yaml$
+        stages: [push]
+
+  # Check for TODO/FIXME comments
+  - repo: local
+    hooks:
+      - id: check-todos
+        name: Check for TODO/FIXME
+        entry: bash -c 'if git diff --cached | grep -E "^\+.*TODO|^\+.*FIXME"; then echo "Warning: TODO/FIXME comments detected"; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+        verbose: true
+
+  # Validate rule metadata
+  - repo: local
+    hooks:
+      - id: validate-rule-metadata
+        name: Validate Rule Metadata
+        entry: bash -c 'for f in rules/semgrep/**/*.yaml; do grep -q "metadata:" "$f" && grep -q "cwe:" "$f" || echo "Warning: $f missing metadata"; done'
+        language: system
+        pass_filenames: false
+        files: rules/semgrep/.*\.yaml$
+        stages: [commit]
+
+  # Check rule naming conventions
+  - repo: local
+    hooks:
+      - id: check-rule-naming
+        name: Check Rule Naming Conventions
+        entry: bash -c 'for f in rules/semgrep/**/*.yaml; do basename "$f" | grep -qE "^(core|module-[a-z]|cc[0-9]+)\.yaml$" || echo "Warning: $f does not follow naming convention"; done'
+        language: system
+        pass_filenames: false
+        files: rules/semgrep/.*\.yaml$
+        stages: [commit]
+        verbose: true
+
+  # Security scan for secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        name: Detect Secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: package.lock.json
+
+# Configuration for specific tools
+default_stages: [commit]
+fail_fast: false
+minimum_pre_commit_version: '3.0.0'
