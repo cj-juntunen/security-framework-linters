@@ -1,4 +1,4 @@
-# GitLab CI/CD Integration Examples
+# GitHub Actions Integration Examples
 
 **Last Updated:** 2025-12-03  
 **Repository:** https://github.com/cj-juntunen/security-framework-linters
@@ -7,15 +7,15 @@
 
 ## Overview
 
-This guide demonstrates how to integrate compliance linting into GitLab CI/CD pipelines. These examples show how to scan code for PCI DSS and SOC 2 compliance violations automatically and integrate results with GitLab Security Dashboard.
+This guide demonstrates how to integrate compliance linting into GitHub Actions workflows. These examples show how to scan code for PCI DSS and SOC 2 compliance violations automatically on every pull request and push.
 
-## Benefits of GitLab CI Integration
+## Benefits of GitHub Actions Integration
 
-- Automated compliance checking in merge requests
-- Integration with GitLab Security Dashboard
-- SAST report generation for vulnerability tracking
-- Pipeline gating to prevent non-compliant merges
-- Artifact storage for audit trails
+- Automated compliance checking on every code change
+- Block non-compliant code from merging
+- Generate compliance reports for audit trails
+- Integration with GitHub Security tab via SARIF uploads
+- No additional infrastructure required
 
 ---
 
@@ -23,669 +23,604 @@ This guide demonstrates how to integrate compliance linting into GitLab CI/CD pi
 
 ### Simple PCI DSS Scan
 
-Add to `.gitlab-ci.yml`:
+Create `.github/workflows/pci-dss-compliance.yml`:
 
 ```yaml
-pci-dss-compliance:
-  stage: test
-  image: returntocorp/semgrep
-  
-  script:
-    - semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/
-              --sarif
-              --output=gl-sast-pci-dss.json
-              .
-  
-  artifacts:
-    reports:
-      sast: gl-sast-pci-dss.json
-    paths:
-      - gl-sast-pci-dss.json
-    when: always
-    expire_in: 30 days
-  
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+name: PCI DSS Compliance Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  pci-compliance:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install Semgrep
+        run: pip install semgrep
+      
+      - name: Run PCI DSS Compliance Scan
+        run: |
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
+                  --sarif \
+                  --output=pci-dss-results.sarif \
+                  .
+      
+      - name: Upload SARIF Results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: pci-dss-results.sarif
+          category: pci-dss-compliance
 ```
 
 ### Simple SOC 2 Scan
 
-Add to `.gitlab-ci.yml`:
+Create `.github/workflows/soc2-compliance.yml`:
 
 ```yaml
-soc2-compliance:
-  stage: test
-  image: returntocorp/semgrep
-  
-  script:
-    - semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml
-              --sarif
-              --output=gl-sast-soc2.json
-              .
-  
-  artifacts:
-    reports:
-      sast: gl-sast-soc2.json
-    paths:
-      - gl-sast-soc2.json
-    when: always
-    expire_in: 30 days
-  
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+name: SOC 2 Compliance Check
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  soc2-compliance:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Run SOC 2 Compliance Scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml
+          generateSarif: true
+      
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+          category: soc2-security
 ```
 
 ---
 
-## Complete Multi-Stage Pipeline
+## Advanced Multi-Framework Scan
 
-### Full Compliance Pipeline with Multiple Frameworks
+### Combined PCI DSS + SOC 2 Compliance
+
+Create `.github/workflows/compliance-check.yml`:
 
 ```yaml
-stages:
-  - validate
-  - test
-  - security
-  - report
+name: Comprehensive Compliance Check
 
-variables:
-  PCI_CONFIG: "https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/"
-  SOC2_CONFIG: "https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml"
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    # Run weekly full scan on Mondays at 2 AM
+    - cron: '0 2 * * 1'
 
-# ============================================================================
-# Stage 1: Validation
-# ============================================================================
-
-validate-config:
-  stage: validate
-  image: returntocorp/semgrep
-  script:
-    - echo "Validating Semgrep configuration..."
-    - semgrep --version
-  only:
-    - merge_requests
-    - main
-    - develop
-
-# ============================================================================
-# Stage 2: Test - Quick Scans
-# ============================================================================
-
-.compliance-scan-template: &compliance_scan
-  stage: test
-  image: returntocorp/semgrep
-  before_script:
-    - pip install --upgrade pip
-  artifacts:
-    reports:
-      sast: gl-sast-${FRAMEWORK}.json
-    paths:
-      - gl-sast-${FRAMEWORK}.json
-      - ${FRAMEWORK}-results.json
-    when: always
-    expire_in: 30 days
-  retry:
-    max: 2
-    when:
-      - runner_system_failure
-      - stuck_or_timeout_failure
-
-pci-dss-quick-scan:
-  <<: *compliance_scan
-  variables:
-    FRAMEWORK: "pci-dss"
-  script:
-    - echo "Running PCI DSS compliance scan..."
-    - semgrep --config $PCI_CONFIG
-              --severity ERROR
-              --json
-              --output=${FRAMEWORK}-results.json
-              .
-    - semgrep --config $PCI_CONFIG
-              --severity ERROR
-              --sarif
-              --output=gl-sast-${FRAMEWORK}.json
-              .
-  only:
-    - merge_requests
-
-soc2-quick-scan:
-  <<: *compliance_scan
-  variables:
-    FRAMEWORK: "soc2"
-  script:
-    - echo "Running SOC 2 compliance scan..."
-    - semgrep --config $SOC2_CONFIG
-              --severity ERROR
-              --json
-              --output=${FRAMEWORK}-results.json
-              .
-    - semgrep --config $SOC2_CONFIG
-              --severity ERROR
-              --sarif
-              --output=gl-sast-${FRAMEWORK}.json
-              .
-  only:
-    - merge_requests
-
-# ============================================================================
-# Stage 3: Security - Full Scans
-# ============================================================================
-
-pci-dss-full-scan:
-  stage: security
-  image: returntocorp/semgrep
-  script:
-    - echo "Running full PCI DSS compliance scan..."
-    - semgrep --config $PCI_CONFIG
-              --json
-              --output=pci-dss-full.json
-              .
-    - semgrep --config $PCI_CONFIG
-              --sarif
-              --output=gl-sast-pci-dss-full.json
-              .
-  artifacts:
-    reports:
-      sast: gl-sast-pci-dss-full.json
-    paths:
-      - pci-dss-full.json
-      - gl-sast-pci-dss-full.json
-    when: always
-    expire_in: 90 days
-  only:
-    - main
-    - develop
-    - schedules
-
-soc2-full-scan:
-  stage: security
-  image: returntocorp/semgrep
-  script:
-    - echo "Running full SOC 2 compliance scan..."
-    - semgrep --config $SOC2_CONFIG
-              --json
-              --output=soc2-full.json
-              .
-    - semgrep --config $SOC2_CONFIG
-              --sarif
-              --output=gl-sast-soc2-full.json
-              .
-  artifacts:
-    reports:
-      sast: gl-sast-soc2-full.json
-    paths:
-      - soc2-full.json
-      - gl-sast-soc2-full.json
-    when: always
-    expire_in: 90 days
-  only:
-    - main
-    - develop
-    - schedules
-
-# ============================================================================
-# Stage 4: Report Generation
-# ============================================================================
-
-generate-compliance-report:
-  stage: report
-  image: python:3.11-slim
-  before_script:
-    - pip install jq yq
-  script:
-    - |
-      cat << EOF > compliance-report.md
-      # Compliance Scan Report
+jobs:
+  compliance-scan:
+    name: Multi-Framework Compliance Scan
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        framework:
+          - name: 'PCI DSS'
+            config: 'https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/'
+            sarif-category: 'pci-dss'
+          - name: 'SOC 2'
+            config: 'https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml'
+            sarif-category: 'soc2'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
       
-      **Pipeline:** $CI_PIPELINE_ID
-      **Branch:** $CI_COMMIT_BRANCH
-      **Commit:** $CI_COMMIT_SHORT_SHA
-      **Date:** $(date +%Y-%m-%d)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
       
-      ## PCI DSS Results
+      - name: Install Semgrep
+        run: |
+          pip install --upgrade pip
+          pip install semgrep
       
-      $(cat pci-dss-full.json | jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- \(.severity): \(.count) finding(s)"')
+      - name: Run ${{ matrix.framework.name }} Scan
+        run: |
+          semgrep --config ${{ matrix.framework.config }} \
+                  --sarif \
+                  --output=${{ matrix.framework.sarif-category }}-results.sarif \
+                  --metrics=off \
+                  .
       
-      ## SOC 2 Results
+      - name: Upload SARIF Results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: ${{ matrix.framework.sarif-category }}-results.sarif
+          category: ${{ matrix.framework.sarif-category }}
       
-      $(cat soc2-full.json | jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- \(.severity): \(.count) finding(s)"')
-      
-      ## Summary
-      
-      View detailed results in the Security Dashboard.
-      EOF
-    - cat compliance-report.md
-  artifacts:
-    paths:
-      - compliance-report.md
-    expire_in: 1 year
-  dependencies:
-    - pci-dss-full-scan
-    - soc2-full-scan
-  only:
-    - main
-    - schedules
+      - name: Upload Compliance Report as Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.framework.sarif-category }}-compliance-report
+          path: ${{ matrix.framework.sarif-category }}-results.sarif
+          retention-days: 90
 ```
 
 ---
 
-## Fail Pipeline on Critical Issues
+## Fail on Critical Violations
 
-### Block Merge Requests with Violations
+### Block PRs with Critical Issues
+
+Create `.github/workflows/compliance-gate.yml`:
 
 ```yaml
-pci-dss-gate:
-  stage: test
-  image: returntocorp/semgrep
-  
-  script:
-    - echo "Checking for critical PCI DSS violations..."
-    - |
-      semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
-              --severity ERROR \
-              --json \
-              --output=pci-critical.json \
-              .
-    - |
-      ERROR_COUNT=$(cat pci-critical.json | jq '.results | length')
-      echo "Found $ERROR_COUNT critical PCI DSS violation(s)"
-      
-      if [ "$ERROR_COUNT" -gt 0 ]; then
-        echo "FAIL: Critical PCI DSS violations must be fixed before merge"
-        cat pci-critical.json | jq '.results[] | {rule: .check_id, file: .path, line: .start.line, message: .extra.message}'
-        exit 1
-      else
-        echo "PASS: No critical PCI DSS violations found"
-      fi
-  
-  artifacts:
-    paths:
-      - pci-critical.json
-    when: always
-    expire_in: 30 days
-  
-  only:
-    - merge_requests
+name: Compliance Gate
 
-soc2-gate:
-  stage: test
-  image: returntocorp/semgrep
-  
-  script:
-    - echo "Checking for critical SOC 2 violations..."
-    - |
-      semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
-              --severity ERROR \
-              --json \
-              --output=soc2-critical.json \
-              .
-    - |
-      ERROR_COUNT=$(cat soc2-critical.json | jq '.results | length')
-      echo "Found $ERROR_COUNT critical SOC 2 violation(s)"
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  compliance-gate:
+    name: Compliance Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
       
-      if [ "$ERROR_COUNT" -gt 0 ]; then
-        echo "FAIL: Critical SOC 2 violations must be fixed before merge"
-        cat soc2-critical.json | jq '.results[] | {rule: .check_id, file: .path, line: .start.line, message: .extra.message}'
-        exit 1
-      else
-        echo "PASS: No critical SOC 2 violations found"
-      fi
-  
-  artifacts:
-    paths:
-      - soc2-critical.json
-    when: always
-    expire_in: 30 days
-  
-  only:
-    - merge_requests
+      - name: Install Semgrep
+        run: pip install semgrep
+      
+      - name: Run PCI DSS Critical Checks
+        id: pci-critical
+        run: |
+          # Only check ERROR severity issues
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
+                  --severity ERROR \
+                  --json \
+                  --output=pci-critical.json \
+                  . || echo "violations=true" >> $GITHUB_OUTPUT
+      
+      - name: Run SOC 2 Critical Checks
+        id: soc2-critical
+        run: |
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
+                  --severity ERROR \
+                  --json \
+                  --output=soc2-critical.json \
+                  . || echo "violations=true" >> $GITHUB_OUTPUT
+      
+      - name: Parse Results and Fail if Critical Issues Found
+        if: steps.pci-critical.outputs.violations == 'true' || steps.soc2-critical.outputs.violations == 'true'
+        run: |
+          echo "Critical compliance violations found!"
+          echo "PCI DSS Results:"
+          jq '.results[] | select(.extra.severity == "ERROR")' pci-critical.json || echo "No PCI DSS errors"
+          echo "SOC 2 Results:"
+          jq '.results[] | select(.extra.severity == "ERROR")' soc2-critical.json || echo "No SOC 2 errors"
+          exit 1
+      
+      - name: Post Results to PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let pciResults = [];
+            let soc2Results = [];
+            
+            try {
+              const pciData = JSON.parse(fs.readFileSync('pci-critical.json', 'utf8'));
+              pciResults = pciData.results.filter(r => r.extra.severity === 'ERROR');
+            } catch (e) {}
+            
+            try {
+              const soc2Data = JSON.parse(fs.readFileSync('soc2-critical.json', 'utf8'));
+              soc2Results = soc2Data.results.filter(r => r.extra.severity === 'ERROR');
+            } catch (e) {}
+            
+            const totalIssues = pciResults.length + soc2Results.length;
+            
+            const comment = totalIssues === 0
+              ? '✅ No critical compliance violations found!'
+              : `⚠️ **${totalIssues} critical compliance violation(s) found!**\n\n` +
+                `**PCI DSS:** ${pciResults.length} critical issue(s)\n` +
+                `**SOC 2:** ${soc2Results.length} critical issue(s)\n\n` +
+                `Please review the workflow logs for details.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 ```
 
 ---
 
 ## Incremental Scanning (Changed Files Only)
 
-### Scan Only Modified Files in MR
+### Scan Only Modified Files in PR
+
+Create `.github/workflows/incremental-scan.yml`:
 
 ```yaml
-incremental-compliance-scan:
-  stage: test
-  image: returntocorp/semgrep
-  
-  before_script:
-    - apt-get update && apt-get install -y git
-  
-  script:
-    - echo "Fetching base branch..."
-    - git fetch origin $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+name: Incremental Compliance Scan
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  incremental-scan:
+    name: Scan Changed Files Only
+    runs-on: ubuntu-latest
     
-    - echo "Getting changed files..."
-    - |
-      git diff --name-only origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME...HEAD \
-        | grep -E '\.(py|js|ts|java|go)$' \
-        > changed_files.txt || echo "No relevant files changed"
-    
-    - |
-      if [ -s changed_files.txt ]; then
-        echo "Scanning changed files:"
-        cat changed_files.txt
-        
-        cat changed_files.txt | xargs semgrep \
-          --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
-          --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
-          --sarif \
-          --output=gl-sast-incremental.json
-      else
-        echo "No relevant files changed, skipping scan"
-        echo '{"results": []}' > gl-sast-incremental.json
-      fi
-  
-  artifacts:
-    reports:
-      sast: gl-sast-incremental.json
-    paths:
-      - gl-sast-incremental.json
-      - changed_files.txt
-    when: always
-    expire_in: 30 days
-  
-  only:
-    - merge_requests
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files: |
+            **/*.py
+            **/*.js
+            **/*.ts
+            **/*.java
+            **/*.go
+      
+      - name: Install Semgrep
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: pip install semgrep
+      
+      - name: Run Compliance Scan on Changed Files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Changed files:"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          
+          # Create temporary file with changed files
+          echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' > changed_files.txt
+          
+          # Run Semgrep only on changed files
+          cat changed_files.txt | xargs semgrep \
+            --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
+            --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
+            --sarif \
+            --output=compliance-results.sarif
+      
+      - name: Upload Results
+        if: always() && steps.changed-files.outputs.any_changed == 'true'
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: compliance-results.sarif
 ```
 
 ---
 
-## Scheduled Compliance Audits
+## Scheduled Full Scans
 
-### Weekly Deep Scan
+### Weekly Deep Scan with Email Notifications
+
+Create `.github/workflows/weekly-compliance-audit.yml`:
 
 ```yaml
-weekly-compliance-audit:
-  stage: security
-  image: returntocorp/semgrep
-  
-  script:
-    - echo "Running weekly compliance audit..."
-    
-    - echo "PCI DSS audit..."
-    - semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/
-              --json
-              --output=pci-dss-weekly.json
-              .
-    
-    - echo "SOC 2 audit..."
-    - semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml
-              --json
-              --output=soc2-weekly.json
-              .
-    
-    - echo "Generating audit report..."
-    - |
-      cat << EOF > weekly-audit-report.md
-      # Weekly Compliance Audit
-      
-      **Date:** $(date +%Y-%m-%d)
-      **Repository:** $CI_PROJECT_PATH
-      **Branch:** $CI_COMMIT_BRANCH
-      
-      ## PCI DSS Findings
-      
-      $(cat pci-dss-weekly.json | jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- **\(.severity)**: \(.count) finding(s)"')
-      
-      ## SOC 2 Findings
-      
-      $(cat soc2-weekly.json | jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- **\(.severity)**: \(.count) finding(s)"')
-      
-      ## Action Items
-      
-      1. Review all ERROR severity findings immediately
-      2. Plan remediation for WARNING severity findings
-      3. Consider INFO recommendations for future improvements
-      
-      View detailed results in artifacts.
-      EOF
-    
-    - cat weekly-audit-report.md
-  
-  artifacts:
-    paths:
-      - pci-dss-weekly.json
-      - soc2-weekly.json
-      - weekly-audit-report.md
-    expire_in: 1 year
-  
-  only:
-    - schedules
+name: Weekly Compliance Audit
 
-# Schedule this job in GitLab CI/CD > Schedules
-# Cron: 0 9 * * 1 (Every Monday at 9 AM)
+on:
+  schedule:
+    # Every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  full-audit:
+    name: Complete Compliance Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: Install Semgrep
+        run: pip install semgrep
+      
+      - name: Run Full PCI DSS Audit
+        run: |
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
+                  --json \
+                  --output=pci-dss-audit.json \
+                  .
+      
+      - name: Run Full SOC 2 Audit
+        run: |
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
+                  --json \
+                  --output=soc2-audit.json \
+                  .
+      
+      - name: Generate Compliance Report
+        run: |
+          cat << 'EOF' > compliance-report.md
+          # Weekly Compliance Audit Report
+          
+          **Date:** $(date +"%Y-%m-%d")
+          **Repository:** ${{ github.repository }}
+          **Branch:** ${{ github.ref_name }}
+          
+          ## PCI DSS Compliance
+          
+          $(jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- \(.severity): \(.count) issue(s)"' pci-dss-audit.json)
+          
+          ## SOC 2 Compliance
+          
+          $(jq -r '.results | group_by(.extra.severity) | map({severity: .[0].extra.severity, count: length}) | .[] | "- \(.severity): \(.count) issue(s)"' soc2-audit.json)
+          
+          ## Details
+          
+          See attached artifacts for complete results.
+          EOF
+      
+      - name: Upload Audit Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-audit-$(date +%Y%m%d)
+          path: |
+            pci-dss-audit.json
+            soc2-audit.json
+            compliance-report.md
+          retention-days: 365
+      
+      - name: Send Email Notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: Weekly Compliance Audit - ${{ github.repository }}
+          to: security-team@company.com
+          from: GitHub Actions <noreply@github.com>
+          body: file://compliance-report.md
+          attachments: pci-dss-audit.json,soc2-audit.json
 ```
 
 ---
 
-## Merge Request Comments
+## Custom PR Comments with Results
 
-### Post Compliance Results as MR Comment
+### Post Detailed Results as PR Comment
+
+Create `.github/workflows/compliance-pr-comment.yml`:
 
 ```yaml
-compliance-mr-comment:
-  stage: report
-  image: python:3.11-slim
-  
-  before_script:
-    - pip install python-gitlab
-  
-  script:
-    - |
-      python3 << 'PYTHON_SCRIPT'
-      import gitlab
-      import json
-      import os
+name: Compliance PR Comment
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  scan-and-comment:
+    name: Scan and Comment Results
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
       
-      # Initialize GitLab API
-      gl = gitlab.Gitlab(os.environ['CI_SERVER_URL'], 
-                        private_token=os.environ['GITLAB_TOKEN'])
-      project = gl.projects.get(os.environ['CI_PROJECT_ID'])
-      mr = project.mergerequests.get(os.environ['CI_MERGE_REQUEST_IID'])
+      - name: Install Semgrep
+        run: pip install semgrep
       
-      # Parse results
-      with open('pci-dss-results.json') as f:
-          pci_results = json.load(f)
+      - name: Run Compliance Scans
+        run: |
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/ \
+                  --json --output=pci-results.json . || true
+          
+          semgrep --config https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/soc2/security.yaml \
+                  --json --output=soc2-results.json . || true
       
-      with open('soc2-results.json') as f:
-          soc2_results = json.load(f)
+      - name: Generate Comment
+        id: generate-comment
+        run: |
+          cat << 'EOF' > comment.md
+          ## Compliance Scan Results
+          
+          ### PCI DSS
+          
+          EOF
+          
+          # Parse PCI DSS results
+          pci_errors=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' pci-results.json)
+          pci_warnings=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' pci-results.json)
+          
+          if [ "$pci_errors" -eq 0 ] && [ "$pci_warnings" -eq 0 ]; then
+            echo "✅ No issues found" >> comment.md
+          else
+            echo "- Errors: $pci_errors" >> comment.md
+            echo "- Warnings: $pci_warnings" >> comment.md
+          fi
+          
+          echo "" >> comment.md
+          echo "### SOC 2" >> comment.md
+          echo "" >> comment.md
+          
+          # Parse SOC 2 results
+          soc2_errors=$(jq '[.results[] | select(.extra.severity == "ERROR")] | length' soc2-results.json)
+          soc2_warnings=$(jq '[.results[] | select(.extra.severity == "WARNING")] | length' soc2-results.json)
+          
+          if [ "$soc2_errors" -eq 0 ] && [ "$soc2_warnings" -eq 0 ]; then
+            echo "✅ No issues found" >> comment.md
+          else
+            echo "- Errors: $soc2_errors" >> comment.md
+            echo "- Warnings: $soc2_warnings" >> comment.md
+          fi
+          
+          echo "" >> comment.md
+          echo "---" >> comment.md
+          echo "" >> comment.md
+          echo "View detailed results in the [Actions tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})." >> comment.md
       
-      # Count by severity
-      pci_errors = len([r for r in pci_results['results'] if r['extra']['severity'] == 'ERROR'])
-      pci_warnings = len([r for r in pci_results['results'] if r['extra']['severity'] == 'WARNING'])
-      soc2_errors = len([r for r in soc2_results['results'] if r['extra']['severity'] == 'ERROR'])
-      soc2_warnings = len([r for r in soc2_results['results'] if r['extra']['severity'] == 'WARNING'])
-      
-      # Generate comment
-      comment = f"""## Compliance Scan Results
-      
-      ### PCI DSS
-      {'✅ No issues found' if pci_errors == 0 and pci_warnings == 0 else f'- **Errors:** {pci_errors}\n- **Warnings:** {pci_warnings}'}
-      
-      ### SOC 2
-      {'✅ No issues found' if soc2_errors == 0 and soc2_warnings == 0 else f'- **Errors:** {soc2_errors}\n- **Warnings:** {soc2_warnings}'}
-      
-      ---
-      View detailed results in [pipeline]({os.environ['CI_PIPELINE_URL']})
-      """
-      
-      # Post comment
-      mr.notes.create({'body': comment})
-      PYTHON_SCRIPT
-  
-  dependencies:
-    - pci-dss-quick-scan
-    - soc2-quick-scan
-  
-  only:
-    - merge_requests
-  
-  when: always
+      - name: Post Comment to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: compliance-scan
+          path: comment.md
 ```
 
 ---
 
-## Parallel Scanning for Speed
+## Integration with Branch Protection
 
-### Run Multiple Scans Simultaneously
+### Require Compliance Checks Before Merge
 
-```yaml
-.parallel-scan-template: &parallel_scan
-  stage: test
-  image: returntocorp/semgrep
-  artifacts:
-    reports:
-      sast: gl-sast-${SCAN_NAME}.json
-    paths:
-      - gl-sast-${SCAN_NAME}.json
-    when: always
-    expire_in: 30 days
+1. Create any of the workflows above
+2. Go to Repository Settings > Branches
+3. Add branch protection rule for `main`:
+   - Enable "Require status checks to pass before merging"
+   - Search for your workflow name (e.g., "PCI DSS Compliance Check")
+   - Check the box to make it required
 
-pci-dss-parallel:
-  <<: *parallel_scan
-  parallel:
-    matrix:
-      - SCAN_NAME: ["pci-core", "pci-module-a", "pci-module-b", "pci-module-c"]
-  script:
-    - |
-      case $SCAN_NAME in
-        pci-core)
-          CONFIG="https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/core.yaml"
-          ;;
-        pci-module-a)
-          CONFIG="https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/module-a.yaml"
-          ;;
-        pci-module-b)
-          CONFIG="https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/module-b.yaml"
-          ;;
-        pci-module-c)
-          CONFIG="https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/module-c.yaml"
-          ;;
-      esac
-      
-      semgrep --config $CONFIG --sarif --output=gl-sast-${SCAN_NAME}.json .
-  only:
-    - merge_requests
-    - main
-```
-
----
-
-## Integration with Protected Branches
-
-### Require Compliance Checks to Pass
-
-1. Go to Settings > Repository > Protected Branches
-2. Expand the branch you want to protect (e.g., `main`)
-3. Under "Allowed to merge", select "Developers + Maintainers"
-4. Check "Require approval from code owners"
-5. Enable "Pipelines must succeed"
-
-This ensures all compliance jobs must pass before merging.
+Now PRs cannot be merged until compliance checks pass.
 
 ---
 
 ## Best Practices
 
-### 1. Use SAST Reports
+### 1. Use SARIF Upload
 
-Always generate SAST reports for Security Dashboard integration:
+Always upload SARIF results to integrate with GitHub Security tab:
 
 ```yaml
-artifacts:
-  reports:
-    sast: gl-sast-report.json
+- name: Upload SARIF Results
+  if: always()
+  uses: github/codeql-action/upload-sarif@v2
+  with:
+    sarif_file: results.sarif
 ```
 
 ### 2. Cache Dependencies
 
-Speed up pipeline by caching pip packages:
+Speed up workflows by caching Semgrep installation:
 
 ```yaml
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - .cache/pip
+- name: Set up Python
+  uses: actions/setup-python@v5
+  with:
+    python-version: '3.11'
+    cache: 'pip'
 ```
 
-### 3. Use Job Templates
+### 3. Run on Schedule
 
-Reduce duplication with YAML anchors:
+Set up weekly deep scans to catch issues over time:
 
 ```yaml
-.compliance-template: &compliance
-  image: returntocorp/semgrep
-  artifacts:
-    when: always
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Monday 2 AM
 ```
 
-### 4. Separate Critical from Non-Critical
+### 4. Separate Critical from Warnings
 
-Run fast critical checks first, full scans later:
+Run separate jobs for different severity levels:
 
 ```yaml
-stages:
-  - quick-check  # ERROR severity only
-  - full-scan    # All severities
+- name: Critical Issues Only
+  run: semgrep --severity ERROR ...
+
+- name: All Issues
+  run: semgrep ...
 ```
 
-### 5. Store Long-Term Audit Trail
+### 5. Store Audit Trail
 
-Keep compliance reports for 1 year:
+Keep compliance reports for audit purposes:
 
 ```yaml
-artifacts:
-  expire_in: 1 year
+- name: Upload Audit Artifacts
+  uses: actions/upload-artifact@v4
+  with:
+    name: compliance-audit-${{ github.run_id }}
+    retention-days: 365
 ```
 
 ---
 
 ## Troubleshooting
 
-### Issue: SAST report not appearing in Security Dashboard
+### Issue: Workflow Fails with "Config not found"
 
-**Solution:** Ensure SARIF output and correct artifact path:
+**Solution:** Use full raw GitHub URL:
 
 ```yaml
-artifacts:
-  reports:
-    sast: gl-sast-report.json  # Must match output filename
+config: https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/rules/semgrep/pci-dss/
 ```
 
-### Issue: Pipeline timeout on large repositories
+### Issue: Too many findings, workflow times out
 
-**Solution:** Use incremental scanning or parallel jobs:
+**Solution:** Use incremental scanning or filter by severity:
 
 ```yaml
-parallel:
-  matrix:
-    - SCAN_TYPE: [core, module-a, module-b]
+run: semgrep --severity ERROR ...
 ```
 
-### Issue: "Config not found" error
+### Issue: SARIF upload fails
 
-**Solution:** Verify URL is accessible and use raw GitHub URL:
+**Solution:** Ensure SARIF file exists even on error:
 
 ```yaml
-config: https://raw.githubusercontent.com/cj-juntunen/security-framework-linters/main/...
+if: always()
 ```
 
 ---
 
 ## Additional Resources
 
-- **[GitLab CI/CD Documentation](https://docs.gitlab.com/ee/ci/)**
-- **[GitLab SAST](https://docs.gitlab.com/ee/user/application_security/sast/)**
-- **[Semgrep GitLab Integration](https://semgrep.dev/docs/deployment/gitlab-ci)**
-- **[GitHub Actions Examples](github-actions-example.md)**
+- **[GitHub Actions Documentation](https://docs.github.com/en/actions)**
+- **[Semgrep in CI/CD](https://semgrep.dev/docs/deployment/core-deployment)**
+- **[SARIF Format](https://sarifweb.azurewebsites.net/)**
+- **[GitLab CI Examples](gitlab-ci-example.md)**
 - **[Jenkins Examples](jenkins-example.md)**
 
 ---
