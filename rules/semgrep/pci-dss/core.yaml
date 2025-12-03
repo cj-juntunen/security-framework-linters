@@ -22,12 +22,12 @@ rules:
           - pattern: $CURSOR.execute(f"... {$VAR} ...")
           - pattern: $DB.query(f"... {$VAR} ...")
     message: |
-      Potential SQL injection vulnerability detected. User input is directly 
+      Potential SQL injection vulnerability detected. User input is directly
       interpolated into SQL query without parameterization.
-      
-      PCI SSS Core Requirement 1.1 requires all input to be validated and 
+
+      PCI SSS Core Requirement 1.1 requires all input to be validated and
       parameterized queries to be used.
-      
+
       Fix: Use parameterized queries with placeholders:
         cursor.execute("SELECT * FROM table WHERE id = ?", (user_input,))
     severity: ERROR
@@ -51,9 +51,9 @@ rules:
           - pattern: $CONN.query("... " + $VAR)
     message: |
       Potential SQL injection vulnerability. User input concatenated into SQL query.
-      
+
       PCI SSS Core 1.1 requires parameterized queries for all database operations.
-      
+
       Fix: Use parameterized queries:
         db.query('SELECT * FROM table WHERE id = ?', [userId])
     severity: ERROR
@@ -78,12 +78,12 @@ rules:
               ...
               $STMT.executeQuery($QUERY);
     message: |
-      SQL injection vulnerability detected. Use PreparedStatement instead of 
+      SQL injection vulnerability detected. Use PreparedStatement instead of
       concatenating user input into queries.
-      
+
       PCI SSS Core 1.1 requires parameterized queries.
-      
-      Fix: 
+
+      Fix:
         PreparedStatement stmt = conn.prepareStatement("SELECT * FROM table WHERE id = ?");
         stmt.setString(1, userId);
     severity: ERROR
@@ -106,9 +106,9 @@ rules:
           - pattern: subprocess.Popen($VAR, shell=True)
     message: |
       Command injection vulnerability detected. User input may be executed as shell command.
-      
+
       PCI SSS Core 1.1 requires input validation and safe command execution.
-      
+
       Fix: Use subprocess with list arguments and shell=False:
         subprocess.run(['command', user_input], shell=False, check=True)
     severity: ERROR
@@ -132,9 +132,9 @@ rules:
               exec($VAR, ...);
     message: |
       Command injection vulnerability. User input executed as shell command.
-      
+
       PCI SSS Core 1.1 requires safe command execution.
-      
+
       Fix: Use execFile with array of arguments:
         execFile('command', [arg1, userInput], callback)
     severity: ERROR
@@ -159,9 +159,9 @@ rules:
           - pattern: $ELEMENT.insertAdjacentHTML(..., $VAR)
     message: |
       Cross-Site Scripting (XSS) vulnerability. User input assigned to innerHTML without sanitization.
-      
+
       PCI SSS Core 1.2 requires proper output encoding for all user-generated content.
-      
+
       Fix: Use textContent for text, or sanitize HTML with DOMPurify:
         element.textContent = userInput;
         // OR
@@ -180,10 +180,10 @@ rules:
     pattern: <$COMPONENT dangerouslySetInnerHTML={{...}} />
     message: |
       Potentially unsafe use of dangerouslySetInnerHTML. This bypasses React's XSS protection.
-      
-      PCI SSS Core 1.2 requires output encoding. Only use dangerouslySetInnerHTML with 
+
+      PCI SSS Core 1.2 requires output encoding. Only use dangerouslySetInnerHTML with
       thoroughly sanitized content.
-      
+
       Fix: Remove dangerouslySetInnerHTML and use regular JSX, or sanitize with DOMPurify:
         <div>{sanitizedContent}</div>
     severity: WARNING
@@ -207,9 +207,9 @@ rules:
               flask.Markup($VAR)
     message: |
       Potential XSS vulnerability in Flask. HTML output with unescaped user input.
-      
+
       PCI SSS Core 1.2 requires output encoding.
-      
+
       Fix: Use render_template with Jinja2 auto-escaping:
         return render_template('page.html', user_input=var)
     severity: ERROR
@@ -241,11 +241,11 @@ rules:
           comparison: $N < 8
     message: |
       Weak password length requirement detected. Minimum is less than 8 characters.
-      
+
       PCI SSS Core 2.1 requires passwords to be:
       - At least 12 characters (recommended), OR
       - At least 8 characters with complexity requirements
-      
+
       Fix: Increase minimum password length to 12 or enforce complexity for 8+.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -272,10 +272,10 @@ rules:
           ... complexity ...
     message: |
       Password validation appears to check only length without complexity requirements.
-      
-      PCI SSS Core 2.1 requires passwords 8-11 characters to have complexity 
+
+      PCI SSS Core 2.1 requires passwords 8-11 characters to have complexity
       (uppercase, lowercase, digits, special characters).
-      
+
       Fix: Add complexity validation for passwords under 12 characters.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -307,9 +307,9 @@ rules:
           ... 2fa ...
     message: |
       Admin route detected without apparent MFA check.
-      
+
       PCI SSS Core 2.2 requires multi-factor authentication for administrative access.
-      
+
       Fix: Add MFA verification middleware or decorator to admin routes.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -338,9 +338,9 @@ rules:
           regex: ".*(payment|card|transaction|gateway).*"
     message: |
       HTTP (not HTTPS) detected for payment-related communication.
-      
+
       PCI SSS Core 3.1 requires TLS 1.2+ for all payment data transmission.
-      
+
       Fix: Use HTTPS with TLS 1.2 minimum:
         requests.post("https://...", ...)
     severity: ERROR
@@ -371,9 +371,9 @@ rules:
               strictSSL: false
     message: |
       TLS certificate verification disabled. This allows man-in-the-middle attacks.
-      
+
       PCI SSS Core 3.1 requires certificate validation for all TLS connections.
-      
+
       Fix: Enable certificate verification:
         requests.post(url, verify=True)  # or path to CA bundle
     severity: ERROR
@@ -400,9 +400,9 @@ rules:
               secureProtocol: 'TLSv1_1_method'
     message: |
       Weak TLS/SSL protocol version detected. SSL/TLS 1.0/1.1 are deprecated and insecure.
-      
+
       PCI SSS Core 3.1 requires TLS 1.2 or higher.
-      
+
       Fix: Use TLS 1.2 or 1.3:
         context.minimum_version = ssl.TLSVersion.TLSv1_2
     severity: ERROR
@@ -435,9 +435,9 @@ rules:
           regex: "^[A-Za-z0-9+/=]{20,}$"
     message: |
       Potential hardcoded cryptographic key or secret detected.
-      
+
       PCI SSS Core 4.1 requires keys to be stored in secure key management systems.
-      
+
       Fix: Use environment variables or key management service:
         key = os.environ.get('ENCRYPTION_KEY')
         # OR use AWS KMS, Azure Key Vault, etc.
@@ -464,9 +464,9 @@ rules:
           - pattern: MessageDigest.getInstance("SHA1")
     message: |
       Weak encryption algorithm detected (DES, RC4, MD5, SHA1).
-      
+
       PCI SSS Core 4.1 requires strong cryptography (AES-256, RSA-2048+, SHA-256+).
-      
+
       Fix: Use modern algorithms:
         - AES-256 for symmetric encryption
         - RSA-2048 or ECDSA-P256 for asymmetric
@@ -497,9 +497,9 @@ rules:
               crypto.createCipheriv(..., iv);
     message: |
       Static initialization vector (IV) detected. IVs must be randomly generated for each encryption.
-      
+
       PCI SSS Core 4.1 requires proper cryptographic implementation.
-      
+
       Fix: Generate random IV for each encryption:
         iv = os.urandom(16)  # For AES
     severity: ERROR
@@ -526,9 +526,9 @@ rules:
           regex: ".*(password|pwd|secret|token|api_key|card|cvv|ssn).*"
     message: |
       Potential logging of sensitive data detected.
-      
+
       PCI SSS Core 5.1 prohibits logging of passwords, keys, tokens, and payment card data.
-      
+
       Fix: Remove sensitive data from logs or mask it:
         logging.info(f"User login: {username}")  # Don't log password
     severity: ERROR
@@ -553,9 +553,9 @@ rules:
           regex: ".*(password|pwd|secret|token|apiKey|card|cvv|ssn).*"
     message: |
       Potential logging of sensitive data detected.
-      
+
       PCI SSS Core 5.1 prohibits logging of sensitive authentication data.
-      
+
       Fix: Remove sensitive data from console/log output.
     severity: ERROR
     languages: [javascript, typescript]
@@ -583,9 +583,9 @@ rules:
               }
     message: |
       Logging full exception may expose sensitive data.
-      
+
       PCI SSS Core 5.1 requires careful handling of error messages.
-      
+
       Fix: Log exception type and safe message, not full details:
         logging.error(f"Operation failed: {type(e).__name__}")
     severity: WARNING
@@ -612,9 +612,9 @@ rules:
               NODE_ENV = 'development'
     message: |
       Debug mode appears to be enabled. This may expose sensitive information.
-      
+
       PCI SSS Core 7.1 requires secure configuration in production.
-      
+
       Fix: Disable debug mode in production:
         DEBUG = False  # or use environment variable
     severity: WARNING
@@ -638,9 +638,9 @@ rules:
           ... production ...
     message: |
       Application may expose detailed error messages.
-      
+
       PCI SSS Core 7.1 requires error messages to not expose system details.
-      
+
       Fix: Use custom error handlers that return generic messages in production.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -668,9 +668,9 @@ rules:
           ... trusted ...
     message: |
       Insecure deserialization of untrusted data detected.
-      
+
       This can lead to remote code execution. Validate and sanitize all input.
-      
+
       Fix: Use safe deserialization methods:
         yaml.safe_load(data)  # Instead of yaml.load
     severity: ERROR
@@ -694,9 +694,9 @@ rules:
           regex: ".*\\.\\./.*"
     message: |
       Potential path traversal vulnerability. User input used in file path.
-      
+
       PCI SSS Core 1.1 requires input validation.
-      
+
       Fix: Validate and sanitize file paths, use allowlists:
         safe_path = os.path.abspath(os.path.join(BASE_DIR, filename))
         if not safe_path.startswith(BASE_DIR):
@@ -727,9 +727,9 @@ rules:
           ... external_entity ...
     message: |
       XML External Entity (XXE) vulnerability. XML parser may process external entities.
-      
+
       PCI SSS Core 1.1 requires secure parsing of untrusted input.
-      
+
       Fix: Disable external entity processing:
         parser = etree.XMLParser(resolve_entities=False)
     severity: ERROR
@@ -756,9 +756,9 @@ rules:
           ... @csrf_protect ...
     message: |
       POST endpoint without apparent CSRF protection.
-      
+
       PCI SSS requires protection against Cross-Site Request Forgery.
-      
+
       Fix: Implement CSRF tokens for state-changing operations.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -782,9 +782,9 @@ rules:
               new $MODEL(req.body)
     message: |
       Mass assignment vulnerability. User input directly mapped to model.
-      
+
       This can allow unauthorized field updates.
-      
+
       Fix: Explicitly specify allowed fields:
         Model.objects.create(name=data['name'], email=data['email'])
     severity: WARNING
@@ -806,9 +806,9 @@ rules:
           regex: ".*(request|req|param|query).*"
     message: |
       Open redirect vulnerability. User-controlled URL in redirect.
-      
+
       This can be used for phishing attacks.
-      
+
       Fix: Validate redirect URLs against allowlist:
         if url in ALLOWED_REDIRECTS:
             return redirect(url)
@@ -833,9 +833,9 @@ rules:
           ... new_session ...
     message: |
       Session value set without regenerating session ID.
-      
+
       This may lead to session fixation vulnerabilities.
-      
+
       Fix: Regenerate session ID after authentication:
         session.regenerate()
         session['user_id'] = user.id
@@ -858,9 +858,9 @@ rules:
           regex: ".*(token|key|secret|password|session).*"
     message: |
       Insecure random number generator used for security-sensitive operation.
-      
+
       PCI SSS requires cryptographically secure random number generation.
-      
+
       Fix: Use secure random functions:
         Python: secrets.token_hex(32)
         JavaScript: crypto.randomBytes(32)
@@ -889,9 +889,9 @@ rules:
           regex: ".*(token|secret|password|hash|signature).*"
     message: |
       Timing attack vulnerability. Comparing secrets with standard equality operator.
-      
+
       Use constant-time comparison for security-sensitive values.
-      
+
       Fix: Use constant-time comparison:
         Python: secrets.compare_digest(secret, input)
         Node.js: crypto.timingSafeEqual(secret, input)
@@ -926,9 +926,9 @@ rules:
           ... limiter ...
     message: |
       Authentication or API endpoint without apparent rate limiting.
-      
+
       This makes brute force attacks easier.
-      
+
       Fix: Implement rate limiting:
         @limiter.limit("5 per minute")
         @app.route('/login', methods=['POST'])
@@ -955,9 +955,9 @@ rules:
           regex: "^[3-6][0-9]{13,18}$"
     message: |
       Potential Primary Account Number (PAN) pattern detected in code.
-      
+
       Test PANs should be clearly marked. Real PANs must never be in code.
-      
+
       If this is a test PAN, use standardized test card numbers from payment networks.
     severity: ERROR
     languages: [python, javascript, typescript, java]
@@ -984,7 +984,7 @@ rules:
           regex: ".*(cvv|cvc|cav|cid).*"
     message: |
       Variable name suggests CVV/CVC handling.
-      
+
       REMINDER: CVV/CVC must NEVER be stored after authorization, even encrypted.
       Ensure this variable is only used transiently for authorization.
     severity: WARNING
@@ -1009,10 +1009,10 @@ rules:
           regex: ".*pin.*"
     message: |
       Variable name suggests PIN handling.
-      
+
       CRITICAL: PINs must be encrypted immediately upon entry in secure hardware.
       PINs should NEVER exist in application-level code.
-      
+
       Verify this is handled in a secure cryptographic device.
     severity: ERROR
     languages: [python, javascript, typescript, java]
@@ -1034,10 +1034,10 @@ rules:
           regex: ".*(track|magnetic|stripe).*"
     message: |
       Variable name suggests magnetic stripe/track data handling.
-      
+
       CRITICAL: Full track data must NEVER be stored after authorization.
       This includes encrypted storage.
-      
+
       Ensure track data is only used transiently for authorization.
     severity: ERROR
     languages: [python, javascript, typescript, java]
@@ -1061,9 +1061,9 @@ rules:
               <version>1.2.3</version>
     message: |
       Specific dependency version detected. Ensure dependencies are kept up-to-date.
-      
+
       PCI SSS requires regular updates to address security vulnerabilities.
-      
+
       Use tools like pip-audit, npm audit, or OWASP Dependency-Check.
     severity: INFO
     languages: [python, javascript, typescript, java, yaml, xml]
@@ -1087,9 +1087,9 @@ rules:
           ... parameterized ...
     message: |
       Raw SQL query execution detected.
-      
+
       Ensure query uses parameterized statements to prevent SQL injection.
-      
+
       Review carefully to verify no user input is concatenated.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -1108,7 +1108,7 @@ rules:
           - pattern-regex: ".*HACK.*security.*"
     message: |
       Security-related TODO/FIXME comment found.
-      
+
       Ensure security issues are tracked and resolved before production deployment.
     severity: INFO
     languages: [python, javascript, typescript, java, go, c, cpp]
@@ -1127,7 +1127,7 @@ rules:
               const password = "";
     message: |
       Empty password detected.
-      
+
       Ensure this is intentional and not a security misconfiguration.
     severity: WARNING
     languages: [python, javascript, typescript, yaml]
@@ -1143,7 +1143,7 @@ rules:
       - pattern-regex: ".*/\\*.*password.*=.*"
     message: |
       Commented-out credential detected.
-      
+
       Remove credentials from code, even in comments.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -1169,9 +1169,9 @@ rules:
               res.cookie($NAME, $VAL, { httpOnly: false })
     message: |
       Insecure cookie configuration detected.
-      
+
       Cookies should have secure=True and httponly=True flags.
-      
+
       Fix:
         response.set_cookie(name, value, secure=True, httponly=True, samesite='Strict')
     severity: WARNING
@@ -1196,9 +1196,9 @@ rules:
           comparison: $TIME > 3600
     message: |
       Long session timeout detected (> 1 hour).
-      
+
       For payment applications, implement shorter session timeouts (15-30 minutes).
-      
+
       PCI DSS requires automatic session termination.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -1227,9 +1227,9 @@ rules:
           ... allowed_extensions ...
     message: |
       File upload without apparent validation.
-      
+
       Validate file type, size, and content before saving.
-      
+
       Fix:
         - Check file extension against allowlist
         - Validate file content type
@@ -1266,7 +1266,7 @@ rules:
           ... @login_required ...
     message: |
       API endpoint without apparent authentication check.
-      
+
       Ensure proper authentication is implemented for all API endpoints.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -1287,9 +1287,9 @@ rules:
               @cross_origin(origins='*')
     message: |
       CORS configured to allow all origins (*).
-      
+
       This can enable cross-origin attacks. Restrict to trusted origins only.
-      
+
       Fix: cors({ origin: 'https://trusted-domain.com' })
     severity: WARNING
     languages: [python, javascript, typescript, yaml]
@@ -1314,7 +1314,7 @@ rules:
               response.headers['Server'] = $VERSION
     message: |
       Server version disclosure in HTTP headers.
-      
+
       Remove or obfuscate server version information to reduce information leakage.
     severity: INFO
     languages: [python, javascript, typescript, yaml]
@@ -1333,7 +1333,7 @@ rules:
               app.use(express.static(..., { index: false }))
     message: |
       Directory listing may be enabled.
-      
+
       Disable directory browsing to prevent information disclosure.
     severity: WARNING
     languages: [yaml, typescript, javascript]
@@ -1345,7 +1345,7 @@ rules:
 # ============================================================================
 # END OF RULES
 # ============================================================================
-# 
+#
 # Usage:
 #   semgrep --config rules/semgrep/pci-dss/core.yaml /path/to/code
 #

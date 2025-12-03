@@ -33,9 +33,9 @@ rules:
           ... if ... raise ...
     message: |
       POST endpoint without apparent input validation.
-      
+
       PCI SSS C1.1 requires server-side validation of all input.
-      
+
       Fix: Add validation before processing:
         if not validate_input(var):
             abort(400, "Invalid input")
@@ -57,9 +57,9 @@ rules:
           - pattern: $DB.query(..., req.params.$FIELD, ...)
     message: |
       Direct use of request data in database operation without visible validation.
-      
+
       PCI SSS C1.1: Validate all input before use.
-      
+
       This pattern is high-risk for SQL injection.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -86,7 +86,7 @@ rules:
           ... luhn ...
     message: |
       Card number validation without Luhn algorithm check.
-      
+
       PCI SSS C1.1: Implement proper card number validation including:
       1. Format check (13-19 digits)
       2. Luhn algorithm validation
@@ -107,9 +107,9 @@ rules:
               return "<html>..." + $VAR + "...</html>"
     message: |
       Unescaped variable in HTML template string.
-      
+
       PCI SSS C1.2 requires context-aware output encoding.
-      
+
       Fix: Use render_template with Jinja2 auto-escaping:
         return render_template('page.html', var=var)
     severity: ERROR
@@ -130,7 +130,7 @@ rules:
               $RES.send(`<html>...${$VAR}...</html>`)
     message: |
       Template literal with variable in HTML context without escaping.
-      
+
       PCI SSS C1.2: Use template engine with auto-escaping or manual escaping.
     severity: ERROR
     languages: [javascript, typescript]
@@ -149,7 +149,7 @@ rules:
               res.send(`<script>var data = '${$VAR}';</script>`)
     message: |
       Variable inserted into JavaScript context without proper encoding.
-      
+
       PCI SSS C1.2: Use JSON encoding for JavaScript context:
         <script>var data = {{ var|tojson }};</script>
     severity: ERROR
@@ -173,7 +173,7 @@ rules:
               app.config['SESSION_COOKIE_HTTPONLY'] = False
     message: |
       Insecure session cookie configuration.
-      
+
       PCI SSS C2.1 requires:
       - SESSION_COOKIE_SECURE = True (HTTPS only)
       - SESSION_COOKIE_HTTPONLY = True (no JavaScript access)
@@ -200,7 +200,7 @@ rules:
           })
     message: |
       Express session with secure: false in cookie configuration.
-      
+
       PCI SSS C2.1: Set secure: true for HTTPS-only cookies.
     severity: ERROR
     languages: [javascript, typescript]
@@ -231,10 +231,10 @@ rules:
           ... session.clear ...
     message: |
       Session data set after login without session regeneration.
-      
-      PCI SSS C2.1: Regenerate session ID after authentication to prevent 
+
+      PCI SSS C2.1: Regenerate session ID after authentication to prevent
       session fixation attacks.
-      
+
       Fix:
         Flask: session.clear() before setting new values
         Express: req.session.regenerate(callback)
@@ -258,9 +258,9 @@ rules:
           comparison: $TIME > 3600000
     message: |
       Session timeout longer than 1 hour detected.
-      
+
       PCI DSS recommends 15-30 minute timeout for payment applications.
-      
+
       Current timeout appears to be > 1 hour.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -279,9 +279,9 @@ rules:
               session({ secret: "..." })
     message: |
       Hardcoded session secret detected.
-      
+
       PCI SSS C2.1: Use strong secret from environment variable.
-      
+
       Fix:
         app.secret_key = os.environ['SECRET_KEY']
     severity: ERROR
@@ -315,9 +315,9 @@ rules:
           ... helmet ...
     message: |
       Endpoint without Content-Security-Policy header.
-      
+
       PCI SSS C3.1: Implement CSP to prevent XSS attacks.
-      
+
       Fix: Add CSP header with restrictive policy:
         Content-Security-Policy: default-src 'self'; script-src 'self'
     severity: WARNING
@@ -337,7 +337,7 @@ rules:
           ... Strict-Transport-Security ...
     message: |
       Response headers set without HSTS (Strict-Transport-Security).
-      
+
       PCI SSS C3.1: Add HSTS header to enforce HTTPS:
         Strict-Transport-Security: max-age=31536000; includeSubDomains
     severity: WARNING
@@ -357,9 +357,9 @@ rules:
               res.set('X-Frame-Options', 'ALLOW-FROM ...')
     message: |
       Weak X-Frame-Options configuration.
-      
+
       ALLOW-FROM is deprecated and not widely supported.
-      
+
       Use: X-Frame-Options: DENY or SAMEORIGIN
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -379,7 +379,7 @@ rules:
           ... helmet ...
     message: |
       Express app without Helmet.js middleware.
-      
+
       PCI SSS C3.1: Use Helmet to set security headers automatically:
         const helmet = require('helmet');
         app.use(helmet());
@@ -414,9 +414,9 @@ rules:
           ... authorization ...
     message: |
       API endpoint without apparent authentication check.
-      
+
       PCI SSS C4.1: All payment API endpoints must require authentication.
-      
+
       Fix: Add authentication middleware or decorator.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -444,9 +444,9 @@ rules:
           ... throttle ...
     message: |
       Payment endpoint without rate limiting.
-      
+
       PCI SSS C4.1: Implement rate limiting to prevent abuse.
-      
+
       Fix: Add rate limiting middleware.
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -466,7 +466,7 @@ rules:
               if ($API_KEY === $EXPECTED)
     message: |
       API key comparison vulnerable to timing attacks.
-      
+
       PCI SSS C4.1: Use constant-time comparison:
         Python: secrets.compare_digest(key1, key2)
         Node.js: crypto.timingSafeEqual(buf1, buf2)
@@ -491,9 +491,9 @@ rules:
           ... expiresIn ...
     message: |
       JWT token created without expiration.
-      
+
       PCI SSS C4.1: All JWT tokens must have expiration:
-        jwt.encode(payload, secret, algorithm='HS256', 
+        jwt.encode(payload, secret, algorithm='HS256',
                    headers={'exp': datetime.utcnow() + timedelta(hours=1)})
     severity: WARNING
     languages: [python, javascript, typescript]
@@ -514,7 +514,7 @@ rules:
               response.headers['Access-Control-Allow-Origin'] = '*'
     message: |
       CORS configured to allow all origins (*).
-      
+
       PCI SSS C4.1: Restrict to trusted origins only:
         cors({ origin: 'https://trusted-domain.com' })
     severity: WARNING
@@ -539,10 +539,10 @@ rules:
           regex: ".*(card|pan|cvv|payment).*"
     message: |
       CRITICAL: Potential storage of payment data in browser storage.
-      
-      PCI SSS C5.1: NEVER store PAN, CVV, or payment data in localStorage 
+
+      PCI SSS C5.1: NEVER store PAN, CVV, or payment data in localStorage
       or sessionStorage.
-      
+
       Use tokenization - store only tokens, never card data.
     severity: ERROR
     languages: [javascript, typescript]
@@ -566,9 +566,9 @@ rules:
           regex: ".*(card|pan|cvv).*"
     message: |
       CRITICAL: Potential storage of payment data in cookie.
-      
+
       PCI SSS C5.1: Never store PAN or CVV in cookies.
-      
+
       Cookies accessible via JavaScript are vulnerable to XSS attacks.
     severity: ERROR
     languages: [javascript, typescript]
@@ -587,9 +587,9 @@ rules:
               $STORE.put({ ..., pan: $PAN, ... })
     message: |
       Potential storage of payment data in IndexedDB.
-      
+
       PCI SSS C5.1: Do not store PAN in IndexedDB.
-      
+
       Use server-side tokenization instead.
     severity: ERROR
     languages: [javascript, typescript]
@@ -614,9 +614,9 @@ rules:
               redirect(f"/payment?card={$CARD}")
     message: |
       CRITICAL: PAN in URL parameter detected.
-      
+
       PCI SSS C7.1: Never include PAN in URLs (GET parameters).
-      
+
       URLs are logged by servers, proxies, and browsers.
       Use POST with encrypted body instead.
     severity: ERROR
@@ -637,9 +637,9 @@ rules:
           regex: ".*(payment|checkout|card).*"
     message: |
       Payment form using GET method.
-      
+
       PCI SSS C7.1: Payment forms must use POST method.
-      
+
       GET parameters appear in URLs and server logs.
     severity: ERROR
     languages: [html]
@@ -660,9 +660,9 @@ rules:
           ... autocomplete="off" ...
     message: |
       Sensitive payment field without autocomplete="off".
-      
+
       PCI SSS C7.1: Card number and CVV fields should have autocomplete="off".
-      
+
       Prevents browser from caching sensitive data.
     severity: WARNING
     languages: [html]
@@ -680,7 +680,7 @@ rules:
               fetch("http://...", { ..., body: $PAYMENT_DATA })
     message: |
       CRITICAL: Payment form or request over unencrypted HTTP.
-      
+
       PCI SSS C7.1: All payment pages and requests must use HTTPS.
     severity: ERROR
     languages: [html, javascript, typescript]
@@ -701,10 +701,10 @@ rules:
           ... maxlength="..." ...
     message: |
       Card number input without client-side validation attributes.
-      
+
       Best practice: Add pattern and maxlength:
         <input pattern="[0-9]{13,19}" maxlength="19" ...>
-      
+
       Note: Client-side validation is convenience, not security.
       Server-side validation is required.
     severity: INFO
@@ -727,10 +727,10 @@ rules:
               app.debug = True
     message: |
       Flask debug mode enabled.
-      
-      Debug mode exposes sensitive information and should NEVER be enabled 
+
+      Debug mode exposes sensitive information and should NEVER be enabled
       in production.
-      
+
       Disable debug mode in production environments.
     severity: ERROR
     languages: [python]
@@ -745,9 +745,9 @@ rules:
           app.set('trust proxy', true)
     message: |
       Express configured to trust proxy headers.
-      
+
       Only enable if behind a trusted reverse proxy (nginx, Apache).
-      
+
       Incorrect configuration can allow IP spoofing.
     severity: INFO
     languages: [javascript, typescript]
@@ -772,9 +772,9 @@ rules:
               });
     message: |
       Direct SQL query in route handler.
-      
+
       Best practice: Use data access layer or ORM instead of raw SQL in routes.
-      
+
       Improves separation of concerns and reduces SQL injection risk.
     severity: INFO
     languages: [python, javascript, typescript]
@@ -798,9 +798,9 @@ rules:
           regex: ".*(stripe|paypal|square|braintree|checkout).*"
     message: |
       Good practice: Redirecting to hosted payment page detected.
-      
+
       This reduces PCI DSS scope significantly (SAQ A compliance possible).
-      
+
       Hosted pages keep PAN out of your environment entirely.
     severity: INFO
     languages: [javascript, typescript, python]
@@ -818,9 +818,9 @@ rules:
               stripe.createToken($CARD_ELEMENT)
     message: |
       Good practice: Stripe Elements detected.
-      
+
       Using payment gateway's hosted fields keeps PAN out of your JavaScript.
-      
+
       This significantly reduces PCI scope (SAQ A-EP compliance possible).
     severity: INFO
     languages: [javascript, typescript]
@@ -838,9 +838,9 @@ rules:
           regex: ".*(checkout|payment|stripe|paypal).*"
     message: |
       Payment iframe detected.
-      
+
       Using payment gateway iframes for card entry reduces PCI scope.
-      
+
       Ensure iframe is from PCI-certified payment processor.
     severity: INFO
     languages: [html]
@@ -852,9 +852,9 @@ rules:
 # ============================================================================
 # END OF MODULE C RULES
 # ============================================================================
-# 
+#
 # Total Rules: 40+
-# 
+#
 # Categories:
 #   - Input Validation: 4 rules
 #   - Output Encoding: 3 rules

@@ -29,15 +29,15 @@ rules:
               $DB.save($DATA)
     message: |
       CRITICAL VIOLATION: CVV/CVC storage detected in database operation.
-      
-      PCI SSS Module A Requirement A1.1 STRICTLY PROHIBITS storage of card 
+
+      PCI SSS Module A Requirement A1.1 STRICTLY PROHIBITS storage of card
       verification codes after authorization, even if encrypted.
-      
+
       Action Required:
       1. Remove all CVV/CVC storage immediately
       2. Use CVV only for authorization, then discard
       3. Never log, store, or cache CVV in any form
-      
+
       This is a critical compliance violation that must be fixed immediately.
     severity: ERROR
     languages: [python]
@@ -65,9 +65,9 @@ rules:
               await $DB.collection(...).insertOne({ ..., cvc: $CVC, ... })
     message: |
       CRITICAL VIOLATION: CVV/CVC storage in database detected.
-      
+
       PCI SSS A1.1 absolutely prohibits CVV storage after authorization.
-      
+
       Fix: Remove CVV from storage operations. Use only for authorization.
     severity: ERROR
     languages: [javascript, typescript]
@@ -92,7 +92,7 @@ rules:
           regex: ".*(cvv|cvc|cvc2|cvv2|cid|cav|card.?verification).*"
     message: |
       CRITICAL: CVV/CVC in log output detected.
-      
+
       CVV must never be logged, even masked. Remove from all logging.
     severity: ERROR
     languages: [python, javascript, typescript, java]
@@ -116,10 +116,10 @@ rules:
               await $DB.collection(...).insertOne({ ..., pin: $PIN, ... })
     message: |
       CRITICAL VIOLATION: PIN storage detected.
-      
+
       PCI SSS A1.1 absolutely prohibits PIN storage in any form.
       PINs must only exist encrypted in secure hardware, never in application code.
-      
+
       Action Required:
       1. Remove all PIN storage
       2. PIN must be encrypted immediately in secure cryptographic device
@@ -149,15 +149,15 @@ rules:
               $DB.save($DATA)
     message: |
       CRITICAL VIOLATION: Full magnetic stripe/track data storage detected.
-      
+
       PCI SSS A1.1 prohibits storage of full track data after authorization.
-      
+
       Only store:
       - PAN (encrypted)
       - Cardholder name
       - Expiration date
       - Service code (if needed)
-      
+
       Never store full track 1 or track 2 data.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -180,10 +180,10 @@ rules:
               const pinBlock = pin + pan
     message: |
       CRITICAL: Plaintext PIN block creation detected.
-      
-      PIN blocks must be created using approved formats (ISO 9564) and 
+
+      PIN blocks must be created using approved formats (ISO 9564) and
       encrypted immediately in secure hardware.
-      
+
       Application code should never handle PIN block creation.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -210,10 +210,10 @@ rules:
           ... encrypted ...
     message: |
       Unencrypted PAN storage detected.
-      
-      PCI SSS A2.1 requires PAN to be rendered unreadable (encrypted, tokenized, 
+
+      PCI SSS A2.1 requires PAN to be rendered unreadable (encrypted, tokenized,
       hashed, or truncated).
-      
+
       Fix: Encrypt PAN before storage:
         encrypted_pan = encryption_service.encrypt(pan)
         db.save(encrypted_pan)
@@ -241,7 +241,7 @@ rules:
           regex: ".*[0-9]{13,19}.*"
     message: |
       Potential PAN in filename detected.
-      
+
       PCI SSS A2.1 requires PAN to be unreadable. Files containing PAN should:
       1. Use non-sequential random filenames
       2. Store PAN encrypted within the file
@@ -265,9 +265,9 @@ rules:
           regex: ".*[0-9]{13,19}.*"
     message: |
       Potential PAN in URL detected.
-      
+
       PAN should never be in URLs (GET parameters). Use POST with encrypted payload.
-      
+
       URLs are logged by web servers, proxies, and browser history.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -294,12 +294,12 @@ rules:
           ... last.?4 ...
     message: |
       Unmasked PAN display detected.
-      
+
       PCI SSS A2.2 requires masking when displaying PAN. Show only:
       - First 6 digits (BIN)
       - Last 4 digits
       - Mask middle digits
-      
+
       Fix:
         masked = f"{pan[:6]}{'*' * (len(pan)-10)}{pan[-4:]}"
     severity: ERROR
@@ -324,10 +324,10 @@ rules:
           regex: ".*(card|pan).*"
     message: |
       Potential PAN in email body.
-      
-      PCI DSS prohibits sending unencrypted PAN via end-user messaging technologies 
+
+      PCI DSS prohibits sending unencrypted PAN via end-user messaging technologies
       (email, SMS, chat).
-      
+
       If PAN must be in email, it must be:
       1. Masked (show only first 6 and last 4)
       2. Encrypted with end-to-end encryption
@@ -351,9 +351,9 @@ rules:
           - pattern: axios.post("http://...", {..., cardNumber: $PAN, ...})
     message: |
       CRITICAL: PAN transmitted over unencrypted HTTP.
-      
+
       PCI SSS A3.1 requires TLS 1.2+ for all cardholder data transmission.
-      
+
       Fix: Use HTTPS with TLS 1.2 minimum.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -385,9 +385,9 @@ rules:
           regex: ".*(payment|card|transaction).*"
     message: |
       Weak TLS configuration for payment data transmission.
-      
+
       PCI SSS A3.1 requires TLS 1.2 or higher for cardholder data.
-      
+
       Fix:
         context.minimum_version = ssl.TLSVersion.TLSv1_2
     severity: ERROR
@@ -410,7 +410,7 @@ rules:
           regex: ".*(payment|card|checkout).*"
     message: |
       Unencrypted WebSocket (ws://) detected for payment functionality.
-      
+
       Use secure WebSocket (wss://) for all payment-related communications.
     severity: ERROR
     languages: [javascript, typescript]
@@ -441,10 +441,10 @@ rules:
               await db.collection('cards').insertOne({encryptedPan: encrypted});
     message: |
       Encryption key stored in same database as encrypted data.
-      
-      PCI SSS A4.1 requires cryptographic keys to be stored separately from 
+
+      PCI SSS A4.1 requires cryptographic keys to be stored separately from
       encrypted cardholder data.
-      
+
       Fix: Use a key management service (AWS KMS, Azure Key Vault, HashiCorp Vault).
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -467,10 +467,10 @@ rules:
               private static final String PAN_KEY = "...";
     message: |
       Hardcoded PAN encryption key detected.
-      
-      PCI SSS A4.1 requires secure key storage. Keys for encrypting PAN must be 
+
+      PCI SSS A4.1 requires secure key storage. Keys for encrypting PAN must be
       stored in a key management system, never in code.
-      
+
       Fix: Use KMS:
         key = kms_client.get_data_key(key_id='alias/pan-encryption')
     severity: ERROR
@@ -498,13 +498,13 @@ rules:
           regex: ".*(pan|card|payment).*"
     message: |
       Encryption key from environment variable for PAN encryption.
-      
-      While better than hardcoding, environment variables are not secure for 
+
+      While better than hardcoding, environment variables are not secure for
       production PAN encryption keys.
-      
-      PCI SSS A4.1 requires: Use proper KMS (AWS KMS, Azure Key Vault, etc.) 
+
+      PCI SSS A4.1 requires: Use proper KMS (AWS KMS, Azure Key Vault, etc.)
       for production PAN encryption keys.
-      
+
       Environment variables acceptable only for development/testing.
     severity: WARNING
     languages: [python, javascript, typescript, java]
@@ -532,10 +532,10 @@ rules:
               $DB.save($CARD)
     message: |
       Soft delete detected for cardholder data.
-      
+
       PCI SSS A5.1 requires secure deletion when data is no longer needed.
       Soft deletes leave data recoverable.
-      
+
       For cardholder data:
       1. Overwrite with random data first
       2. Then hard delete the record
@@ -560,13 +560,13 @@ rules:
           ... secure_delete ...
     message: |
       Simple deletion of cardholder data without secure overwrite.
-      
-      PCI SSS A5.1: When cardholder data is deleted, overwrite with random data 
+
+      PCI SSS A5.1: When cardholder data is deleted, overwrite with random data
       before deletion to prevent recovery.
-      
+
       Fix:
         # Overwrite first
-        db.execute("UPDATE cards SET encrypted_pan = ? WHERE id = ?", 
+        db.execute("UPDATE cards SET encrypted_pan = ? WHERE id = ?",
                    (random_data, card_id))
         # Then delete
         db.execute("DELETE FROM cards WHERE id = ?", (card_id,))
@@ -593,10 +593,10 @@ rules:
           ... valid_until ...
     message: |
       Cardholder data insertion without apparent retention/expiration.
-      
-      PCI DSS 3.1 requires: Store cardholder data only as long as needed for 
+
+      PCI DSS 3.1 requires: Store cardholder data only as long as needed for
       business/legal requirements.
-      
+
       Best practice: Add expiration timestamps and automated purge processes.
     severity: INFO
     languages: [python, javascript, typescript]
@@ -622,9 +622,9 @@ rules:
           regex: ".*(card.?number|pan|card.?num|credit.?card).*"
     message: |
       CRITICAL: Potential PAN in log statement.
-      
+
       PCI SSS A6.1 absolutely prohibits PAN in logs.
-      
+
       Fix: Log only last 4 digits or tokenized reference:
         logging.info(f"Payment processed for card ending {pan[-4:]}")
     severity: ERROR
@@ -643,9 +643,9 @@ rules:
       (logging\.|console\.|logger\.|print\().*[3-6][0-9]{13,15}
     message: |
       Potential PAN pattern detected in logging statement.
-      
+
       PCI SSS A6.1: PAN must never appear in logs.
-      
+
       Review this logging statement carefully to ensure no PAN is being logged.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -673,9 +673,9 @@ rules:
           regex: ".*(payment|card|transaction).*"
     message: |
       Exception handler may log payment data.
-      
+
       Ensure payment objects logged in exceptions don't contain PAN, CVV, or other SAD.
-      
+
       Fix: Log only safe transaction reference:
         logging.error(f"Payment failed: txn_id={payment.id}")
     severity: WARNING
@@ -697,10 +697,10 @@ rules:
           regex: ".*(payment|card|transaction).*"
     message: |
       Debug output of payment object detected.
-      
+
       Payment objects often contain PAN and other sensitive data.
       Never log entire payment objects.
-      
+
       Fix: Log only specific safe fields:
         logger.debug(f"Payment: id={payment.id}, status={payment.status}")
     severity: WARNING
@@ -726,9 +726,9 @@ rules:
               });
     message: |
       Request body logging on payment endpoint.
-      
+
       Payment request bodies typically contain PAN and CVV.
-      
+
       PCI SSS A6.1: Never log request/response bodies for payment endpoints.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -755,9 +755,9 @@ rules:
               await db.save({..., cardToken: token, ...});
     message: |
       Good practice: Tokenization detected.
-      
+
       Tokenization is the preferred method for storing payment card references.
-      
+
       Ensure:
       1. Tokens are from PCI-certified token service provider
       2. Tokens cannot be reverse-engineered to original PAN
@@ -786,10 +786,10 @@ rules:
           regex: ".*(card|pan|payment).*"
     message: |
       CRITICAL: Cardholder data in client-side storage.
-      
-      PCI DSS prohibits storing cardholder data in browser storage 
+
+      PCI DSS prohibits storing cardholder data in browser storage
       (localStorage, sessionStorage, cookies).
-      
+
       Fix: Never store PAN client-side. Use server-side tokenization.
     severity: ERROR
     languages: [javascript, typescript]
@@ -810,9 +810,9 @@ rules:
               $FORM.action = "... " + $PAN + " ..."
     message: |
       PAN in form action URL detected.
-      
+
       Never include PAN in URLs. URLs are logged and visible in browser history.
-      
+
       Use POST with encrypted body instead.
     severity: ERROR
     languages: [html, javascript, typescript]
@@ -835,7 +835,7 @@ rules:
           regex: "^http://.*"
     message: |
       PAN transmitted over unencrypted HTTP.
-      
+
       CRITICAL: All cardholder data transmission must use HTTPS with TLS 1.2+.
     severity: ERROR
     languages: [javascript, typescript]
@@ -863,10 +863,10 @@ rules:
           regex: ".*(card|pan|payment).*"
     message: |
       CRITICAL: Cardholder data in mobile device storage.
-      
-      PCI DSS prohibits storing cardholder data on mobile devices unless 
+
+      PCI DSS prohibits storing cardholder data on mobile devices unless
       encrypted with strong cryptography.
-      
+
       Best practice: Don't store PAN on mobile devices. Use tokenization.
     severity: ERROR
     languages: [java, swift, javascript, typescript]
@@ -896,9 +896,9 @@ rules:
           ... last4 ...
     message: |
       Unmasked PAN in API response.
-      
+
       PCI SSS A2.2: API responses must mask PAN (show only first 6 and last 4).
-      
+
       Fix:
         return jsonify({"card_last4": pan[-4:], "card_bin": pan[:6]})
     severity: ERROR
@@ -920,9 +920,9 @@ rules:
               await axios.post(webhookUrl, {..., cardNumber: $PAN, ...})
     message: |
       PAN in webhook payload detected.
-      
+
       Webhooks should not contain PAN. Use tokenized references instead.
-      
+
       Fix: Send only card token or last 4 digits in webhooks.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -959,9 +959,9 @@ rules:
           ... EncryptedField ...
     message: |
       ORM model with unencrypted card_number field.
-      
+
       PCI SSS A2.1: PAN must be encrypted at rest.
-      
+
       Fix: Use encrypted field type or database-level encryption:
         card_number = EncryptedTextField(...)
     severity: WARNING
@@ -985,9 +985,9 @@ rules:
           ... encrypt ...
     message: |
       Database backup without apparent encryption.
-      
+
       PCI DSS 3.4: Backups containing cardholder data must be encrypted.
-      
+
       Ensure backup files containing PAN are encrypted during:
       1. Backup creation
       2. Transit to storage
@@ -1021,9 +1021,9 @@ rules:
           ... TEST ...
     message: |
       Test PAN detected without clear identification.
-      
+
       Best practice: Clearly mark test card numbers to distinguish from real PANs.
-      
+
       Good:
         TEST_CARD_VISA = "4111111111111111"  # Test card from payment network
     severity: INFO
@@ -1047,7 +1047,7 @@ rules:
               }
     message: |
       Test environment accessing production cardholder data.
-      
+
       PCI DSS 6.4.3: Use de-identified or synthetic data for testing.
       Never use real production cardholder data in test environments.
     severity: ERROR
@@ -1072,9 +1072,9 @@ rules:
               mixpanel.track('purchase', {..., cardNumber: $PAN, ...})
     message: |
       PAN in analytics tracking detected.
-      
+
       NEVER send PAN to analytics platforms. These are not PCI-compliant environments.
-      
+
       Fix: Send only masked card info:
         analytics.track('payment', {card_last4: pan[-4:], card_type: 'visa'})
     severity: ERROR
@@ -1097,10 +1097,10 @@ rules:
               bugsnag.notify($ERR, {..., cardData: $CARD, ...})
     message: |
       Cardholder data in error tracking system.
-      
+
       Error tracking systems (Sentry, Bugsnag, etc.) are not PCI-compliant.
       Never include PAN or other cardholder data in error reports.
-      
+
       Fix: Send only safe transaction references.
     severity: ERROR
     languages: [python, javascript, typescript]
@@ -1125,7 +1125,7 @@ rules:
               fs.appendFile($FILE, `${pan},${amount}\n`)
     message: |
       PAN written to CSV file.
-      
+
       PCI DSS 3.4: If PAN must be in files:
       1. Encrypt the file
       2. Control access strictly
@@ -1150,9 +1150,9 @@ rules:
               fs.writeFile('/tmp/...', $PAN)
     message: |
       PAN written to temporary file.
-      
+
       Temporary files often have weak permissions and may not be securely deleted.
-      
+
       If PAN must be in temp files:
       1. Use secure temp directory with strict permissions
       2. Encrypt contents
@@ -1180,9 +1180,9 @@ rules:
               $ENCRYPTED = $PAN.encode('rot13')
     message: |
       Weak encoding used for PAN (not encryption).
-      
+
       Base64, ROT13, etc. are encoding, not encryption.
-      
+
       PCI DSS 3.4 requires strong cryptography:
       - AES-256 minimum
       - Proper key management
@@ -1206,9 +1206,9 @@ rules:
               AES.new($KEY, AES.MODE_ECB)
     message: |
       ECB mode encryption detected for potential PAN encryption.
-      
+
       ECB mode is insecure for PAN encryption (patterns remain visible).
-      
+
       Use: AES-256 in CBC or GCM mode with random IV per encryption.
     severity: ERROR
     languages: [java, python]
@@ -1234,9 +1234,9 @@ rules:
               token = braintree.ClientToken.generate()
     message: |
       ✓ Good Practice: Payment tokenization detected.
-      
+
       Tokenization is the preferred PCI DSS method for reducing PAN storage scope.
-      
+
       Ensure:
       - Token service is PCI DSS certified
       - Original PAN never stored locally
@@ -1258,9 +1258,9 @@ rules:
               const encrypted = await kmsClient.encrypt({Plaintext: pan})
     message: |
       ✓ Good Practice: KMS-based encryption detected.
-      
+
       Using a Key Management Service for PAN encryption is PCI DSS best practice.
-      
+
       Verify:
       - Keys stored separately from data
       - Regular key rotation enabled
@@ -1286,9 +1286,9 @@ rules:
               window.location.href = gatewayUrl;
     message: |
       ✓ Good Practice: Payment page redirect detected.
-      
+
       Redirecting to payment gateway's hosted payment page reduces PCI scope.
-      
+
       This pattern keeps PAN out of your environment entirely.
     severity: INFO
     languages: [python, javascript, typescript]
@@ -1307,10 +1307,10 @@ rules:
               iframe.src = 'https://gateway.com/hosted-fields'
     message: |
       ✓ Scope Reduction: Payment iframe detected.
-      
-      Using payment gateway's iframe for card entry keeps PAN out of your 
+
+      Using payment gateway's iframe for card entry keeps PAN out of your
       environment, significantly reducing PCI scope.
-      
+
       Ensure iframe is from PCI-certified payment processor.
     severity: INFO
     languages: [html, javascript, typescript]
@@ -1323,9 +1323,9 @@ rules:
 # ============================================================================
 # END OF MODULE A RULES
 # ============================================================================
-# 
+#
 # Total Rules: 60+
-# 
+#
 # Categories:
 #   - Sensitive Authentication Data (SAD) Protection: 6 rules
 #   - Primary Account Number (PAN) Protection: 8 rules

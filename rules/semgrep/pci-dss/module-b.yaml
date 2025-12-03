@@ -9,11 +9,11 @@ rules:
   # Last Updated: 2024-11-19
   # Repository: https://github.com/cj-juntunen/compliance-rules
   # ============================================================================
-  # 
+  #
   # IMPORTANT: Module B requirements primarily apply to C/C++ terminal software.
   # Many requirements cannot be fully validated through static analysis as they
   # require hardware security features (secure elements, tamper detection, etc.)
-  # 
+  #
   # These rules focus on software-detectable patterns in terminal applications.
   # ============================================================================
 
@@ -39,16 +39,16 @@ rules:
           regex: ".*pin.*"
     message: |
       CRITICAL VIOLATION: PIN appears to be handled in application-level code.
-      
-      PCI SSS Module B Requirement B1.1: PIN must NEVER exist in application 
-      memory. PIN entry and encryption must occur entirely within a secure 
+
+      PCI SSS Module B Requirement B1.1: PIN must NEVER exist in application
+      memory. PIN entry and encryption must occur entirely within a secure
       cryptographic device (SCD).
-      
+
       Action Required:
       1. Remove all PIN handling from application code
       2. Use secure hardware module for PIN entry and encryption
       3. Application should only receive encrypted PIN blocks
-      
+
       This is a critical violation requiring immediate remediation.
     severity: ERROR
     languages: [c, cpp, java]
@@ -75,7 +75,7 @@ rules:
           regex: ".*pin.*"
     message: |
       CRITICAL: Potential plaintext PIN transmission detected.
-      
+
       PIN must be encrypted within secure hardware before any transmission.
       Application should only handle encrypted PIN blocks.
     severity: ERROR
@@ -97,7 +97,7 @@ rules:
               $ENCRYPTED = $PIN ^ $KEY;
     message: |
       CRITICAL: Weak PIN encryption detected (XOR or simple masking).
-      
+
       PCI SSS B1.1 requires:
       - TDES or AES encryption
       - DUKPT key management
@@ -131,7 +131,7 @@ rules:
           ... verify_security ...
     message: |
       PIN entry function without apparent security validation.
-      
+
       PCI SSS B1.2 requires validation before PIN acceptance:
       1. Verify PED (PIN Entry Device) integrity
       2. Check tamper detection status
@@ -160,9 +160,9 @@ rules:
           ... timer ...
     message: |
       PIN entry without apparent timeout implementation.
-      
+
       PCI SSS B1.2: Implement timeout for PIN entry (typically 30-90 seconds).
-      
+
       Timeout prevents:
       - Shoulder surfing attacks
       - Extended tampering attempts
@@ -200,10 +200,10 @@ rules:
           ... validate_firmware ...
     message: |
       CRITICAL: Firmware execution without signature verification.
-      
-      PCI SSS B2.1 requires cryptographic signature verification before 
+
+      PCI SSS B2.1 requires cryptographic signature verification before
       executing any firmware.
-      
+
       Implementation required:
       1. Sign firmware with RSA-2048 or ECDSA-P256
       2. Verify signature using hardware-backed public key
@@ -229,11 +229,11 @@ rules:
               calculate_checksum($FIRMWARE);
     message: |
       Weak signature algorithm detected (CRC32, MD5, simple checksum).
-      
+
       PCI SSS B2.1 requires cryptographic signatures:
       - RSA-2048 with SHA-256 minimum
       - OR ECDSA-P256 with SHA-256
-      
+
       CRC/MD5/checksums are not cryptographic and can be forged.
     severity: ERROR
     languages: [c, cpp]
@@ -258,10 +258,10 @@ rules:
               }
     message: |
       CRITICAL: Optional or bypassable signature verification.
-      
-      Firmware signature verification must be MANDATORY and cannot be bypassed 
+
+      Firmware signature verification must be MANDATORY and cannot be bypassed
       through configuration, debug mode, or any other mechanism.
-      
+
       PCI SSS B2.1: Signature verification must always execute.
     severity: ERROR
     languages: [c, cpp]
@@ -288,10 +288,10 @@ rules:
               run_firmware();
     message: |
       CRITICAL: Firmware execution continues after signature verification failure.
-      
+
       PCI SSS B2.1: Device must HALT if signature verification fails.
       Never execute unverified firmware.
-      
+
       Fix: Enter safe mode or lockdown state on verification failure.
     severity: ERROR
     languages: [c, cpp]
@@ -322,10 +322,10 @@ rules:
           ... clear_keys ...
     message: |
       CRITICAL: Inadequate tamper response - keys not zeroized.
-      
-      PCI SSS B3.1 requires immediate zeroization of ALL cryptographic keys 
+
+      PCI SSS B3.1 requires immediate zeroization of ALL cryptographic keys
       upon tamper detection.
-      
+
       Required actions:
       1. Zeroize all keys in memory
       2. Zeroize keys in secure element
@@ -357,10 +357,10 @@ rules:
           ... intrusion ...
     message: |
       No tamper detection handler found in terminal software.
-      
-      PCI SSS B3.1: Terminal software must monitor tamper detection sensors and 
+
+      PCI SSS B3.1: Terminal software must monitor tamper detection sensors and
       respond immediately to tamper events.
-      
+
       Required:
       - Tamper detection interrupt handler
       - Periodic polling of tamper sensors
@@ -385,9 +385,9 @@ rules:
               #endif
     message: |
       CRITICAL: Tamper detection can be bypassed in debug mode.
-      
+
       Tamper detection must NEVER be bypassable, even in debug/test builds.
-      
+
       Use hardware tamper detection that cannot be disabled by software.
     severity: ERROR
     languages: [c, cpp]
@@ -407,9 +407,9 @@ rules:
           ... volatile ...
     message: |
       Non-volatile key zeroization detected.
-      
+
       Compiler may optimize away non-volatile memory clearing.
-      
+
       Fix: Use volatile pointers for security-critical zeroization:
         volatile uint8_t* p = key;
         while (len--) *p++ = 0;
@@ -436,10 +436,10 @@ rules:
               static uint8_t encryption_key[] = {...};
     message: |
       CRITICAL: Cryptographic key in application memory.
-      
-      PCI SSS B4.1: Terminal cryptographic keys must be stored in secure element 
+
+      PCI SSS B4.1: Terminal cryptographic keys must be stored in secure element
       or HSM, never in application-accessible memory.
-      
+
       Application should only use key handles/references, never actual key material.
     severity: ERROR
     languages: [c, cpp]
@@ -466,9 +466,9 @@ rules:
           ... tr34 ...
     message: |
       Key loading without authentication detected.
-      
+
       PCI SSS B4.1: Key loading must use authenticated protocols (TR-34, TR-31).
-      
+
       Required:
       1. Mutual authentication (terminal and key distribution host)
       2. Encrypted key transport
@@ -497,10 +497,10 @@ rules:
           ... secure_element ...
     message: |
       Encryption operation without apparent secure element usage.
-      
-      PCI SSS B4.1: Keys must reside in secure element. Encryption should occur 
+
+      PCI SSS B4.1: Keys must reside in secure element. Encryption should occur
       in secure hardware, with application only passing data in/out.
-      
+
       Use: se_encrypt(key_handle, data) instead of encrypt(data, key)
     severity: WARNING
     languages: [c, cpp]
@@ -522,10 +522,10 @@ rules:
               const char* terminal_id = "...";
     message: |
       Static terminal ID detected.
-      
-      PCI SSS B5.1: Terminal authentication should use cryptographic proof of 
+
+      PCI SSS B5.1: Terminal authentication should use cryptographic proof of
       identity (certificates), not just static IDs.
-      
+
       Static IDs can be cloned. Use device certificates and challenge-response.
     severity: WARNING
     languages: [c, cpp]
@@ -543,10 +543,10 @@ rules:
               authenticate($TID, $PWD);
     message: |
       Password-based terminal authentication detected.
-      
+
       PCI SSS B5.1: Use certificate-based authentication for terminals.
-      
-      Passwords can be compromised/shared. Device certificates provide stronger 
+
+      Passwords can be compromised/shared. Device certificates provide stronger
       authentication and are tied to specific hardware.
     severity: WARNING
     languages: [c, cpp]
@@ -570,10 +570,10 @@ rules:
               SSL_CTX_set_verify($CTX, SSL_VERIFY_NONE, NULL);
     message: |
       CRITICAL: TLS certificate verification disabled.
-      
+
       PCI SSS B6.1: Terminals must verify server certificates to prevent MITM attacks.
-      
-      Enable certificate verification and implement certificate pinning for 
+
+      Enable certificate verification and implement certificate pinning for
       known payment network hosts.
     severity: ERROR
     languages: [c, cpp]
@@ -597,9 +597,9 @@ rules:
               SSL_CTX_set_cipher_list($CTX, "... NULL ...");
     message: |
       Weak cipher suite configuration detected.
-      
+
       PCI SSS B6.1: Use only strong cipher suites (AES-256, AES-128).
-      
+
       Prohibited: DES, 3DES, RC4, MD5, NULL ciphers
       Required: AES-GCM or AES-CBC with strong key exchange
     severity: ERROR
@@ -624,8 +624,8 @@ rules:
           ... verify_certificate_fingerprint ...
     message: |
       Payment network connection without certificate pinning.
-      
-      Best practice for terminals: Implement certificate pinning for known 
+
+      Best practice for terminals: Implement certificate pinning for known
       payment hosts to prevent MITM with fraudulent certificates.
     severity: INFO
     languages: [c, cpp]
@@ -652,10 +652,10 @@ rules:
           ... verify_integrity ...
     message: |
       Plaintext configuration file detected.
-      
-      PCI SSS B7.1: Terminal configuration must be integrity-protected and/or 
+
+      PCI SSS B7.1: Terminal configuration must be integrity-protected and/or
       encrypted.
-      
+
       Configuration should:
       1. Be encrypted with key from secure element
       2. Include HMAC for integrity verification
@@ -682,9 +682,9 @@ rules:
           ... integrity ...
     message: |
       Configuration loaded without integrity verification.
-      
+
       PCI SSS B7.1: Verify configuration integrity before use to detect tampering.
-      
+
       Use HMAC-SHA256 to protect configuration integrity.
     severity: WARNING
     languages: [c, cpp]
@@ -708,9 +708,9 @@ rules:
           ... verify_signature ...
     message: |
       Configuration update without authentication.
-      
+
       PCI SSS B7.1: Configuration changes must require authentication.
-      
+
       Implement:
       1. Administrator signature verification
       2. Audit logging of all changes
@@ -735,9 +735,9 @@ rules:
           - pattern: gets($BUFFER)
     message: |
       Unsafe C function detected - buffer overflow risk.
-      
+
       Terminal software must be memory-safe to prevent exploitation.
-      
+
       Replace with safe alternatives:
       - strcpy → strncpy or strlcpy
       - strcat → strncat or strlcat
@@ -764,7 +764,7 @@ rules:
               *$PTR;
     message: |
       Potential use-after-free vulnerability.
-      
+
       Set pointers to NULL after free to prevent use-after-free:
         free(ptr);
         ptr = NULL;
@@ -792,10 +792,10 @@ rules:
               }
     message: |
       Debug backdoor detected in terminal code.
-      
-      Production terminals must have all debug functionality removed or 
+
+      Production terminals must have all debug functionality removed or
       protected with hardware-backed authentication.
-      
+
       Debug modes can bypass security controls.
     severity: ERROR
     languages: [c, cpp]
@@ -813,7 +813,7 @@ rules:
               bool test_mode = true;
     message: |
       Test mode enabled in code.
-      
+
       Ensure test mode is disabled for production builds.
       Test modes may bypass security validations.
     severity: WARNING
@@ -835,15 +835,15 @@ rules:
               }
     message: |
       REMINDER: Terminal software requires PCI PTS POI certification.
-      
+
       These Semgrep rules check software patterns but cannot verify:
       - Hardware security features (secure element, tamper detection)
       - Physical security
       - Complete key management procedures
-      
-      PCI PTS POI certification by approved lab is MANDATORY for production 
+
+      PCI PTS POI certification by approved lab is MANDATORY for production
       deployment of payment terminals.
-      
+
       Contact: https://www.pcisecuritystandards.org/assessors_and_solutions/pin_transaction_devices
     severity: INFO
     languages: [c, cpp]
@@ -863,7 +863,7 @@ rules:
               /* Hardware security module required */
     message: |
       Hardware security dependency noted in code.
-      
+
       Module B requirements heavily depend on hardware security features.
       Ensure all hardware dependencies are implemented before deployment.
     severity: INFO
@@ -875,11 +875,11 @@ rules:
 # ============================================================================
 # END OF MODULE B RULES
 # ============================================================================
-# 
+#
 # Total Rules: 30+
-# 
+#
 # IMPORTANT NOTES:
-# 
+#
 # 1. Module B primarily applies to C/C++ terminal software
 # 2. Many requirements require hardware validation beyond static analysis
 # 3. PCI PTS POI certification is MANDATORY for production terminals
@@ -888,7 +888,7 @@ rules:
 #    - Physical tamper detection
 #    - Hardware-backed cryptography
 #    - Side-channel attack resistance
-# 
+#
 # Categories:
 #   - PIN Security: 5 rules
 #   - Secure Boot: 5 rules

@@ -28,38 +28,38 @@ repos:
       - id: trailing-whitespace
         name: Trim Trailing Whitespace
         exclude: \.min\.(js|css)$
-      
+
       - id: end-of-file-fixer
         name: Fix End of Files
         exclude: \.min\.(js|css)$
-      
+
       - id: check-yaml
         name: Check YAML Syntax
         args: [--unsafe]
-      
+
       - id: check-json
         name: Check JSON Syntax
-      
+
       - id: check-xml
         name: Check XML Syntax
-      
+
       - id: check-added-large-files
         name: Check for Large Files
         args: [--maxkb=500]
-      
+
       - id: check-merge-conflict
         name: Check for Merge Conflicts
-      
+
       - id: detect-private-key
         name: Detect Private Keys
-      
+
       - id: mixed-line-ending
         name: Fix Mixed Line Endings
         args: [--fix=lf]
-      
+
       - id: check-case-conflict
         name: Check for Case Conflicts
-      
+
       - id: check-symlinks
         name: Check for Broken Symlinks
 
