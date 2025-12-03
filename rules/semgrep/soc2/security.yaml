@@ -792,7 +792,7 @@ rules:
       - pattern-either:
           - pattern: ssl._create_unverified_context()
           - pattern: verify=False
-          - pattern: rejectUnauthorized: false
+          - pattern: "rejectUnauthorized: false"
           - pattern: |
               requests.get(..., verify=False, ...)
     message: |
