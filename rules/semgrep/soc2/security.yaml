@@ -797,8 +797,8 @@ rules:
               requests.get(..., verify=False, ...)
     message: |
       SOC 2 CC9.1 violation: TLS certificate verification disabled.
-      Disabling certificate verification enables man-in-the-middle attacks.
-      Remove verify=False and ensure proper certificate validation.
+      Disabling certificate verification (e.g., verify=False in Python or rejectUnauthorized: false in Node.js) enables man-in-the-middle attacks.
+      Remove verify=False or rejectUnauthorized: false and ensure proper certificate validation.
     severity: ERROR
     languages: [python, javascript, typescript]
     metadata:

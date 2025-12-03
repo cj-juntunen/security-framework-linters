@@ -279,37 +279,37 @@ rules:
       confidence: MEDIUM
 
   - id: pci-sss-a2.2-unmasked-pan-display
-    patterns:
-      - pattern-either:
-          - pattern: print(f"Card: {$CARD}")
-          - pattern: console.log("Card:", $CARD)
-          - pattern: $ELEMENT.textContent = $CARD
-          - pattern: return f"<span>{$CARD}</span>"
-      - metavariable-regex:
-          metavariable: $CARD
-          regex: ".*(card.?number|pan|card.?num).*"
-      - pattern-not: |
-          ... mask ...
-      - pattern-not: |
-          ... last.?4 ...
-    message: |
-      Unmasked PAN display detected.
+  patterns:
+    - pattern-either:
+        - pattern: print(f"Card: {$CARD}")
+        - pattern: console.log("Card:", $CARD)
+        - pattern: $ELEMENT.textContent = $CARD
+        - pattern: return f"<span>{$CARD}</span>"
+    - metavariable-regex:
+        metavariable: $CARD
+        regex: ".*(card.?number|pan|card.?num).*"
+    - pattern-not: |
+        ... mask ...
+    - pattern-not: |
+        ... last.?4 ...
+  message: |
+    Unmasked PAN display detected.
 
-      PCI SSS A2.2 requires masking when displaying PAN. Show only:
-      - First 6 digits (BIN)
-      - Last 4 digits
-      - Mask middle digits
+    PCI SSS A2.2 requires masking when displaying PAN. Show only:
+    - First 6 digits (BIN)
+    - Last 4 digits
+    - Mask middle digits
 
-      Fix:
-        masked = f"{pan[:6]}{'*' * (len(pan)-10)}{pan[-4:]}"
-    severity: ERROR
-    languages: [python, javascript, typescript]
-    metadata:
-      category: security
-      pci-dss: "3.3.1"
-      framework: PCI-SSS
-      requirement: "A2.2"
-      confidence: MEDIUM
+    Fix:
+      masked = f"{pan[:6]}{'*' * (len(pan)-10)}{pan[-4:]}"
+  severity: ERROR
+  languages: [python, javascript, typescript]
+  metadata:
+    category: security
+    pci-dss: "3.3.1"
+    framework: PCI-SSS
+    requirement: "A2.2"
+    confidence: MEDIUM
 
   - id: pci-sss-a2.2-pan-in-email
     patterns:
