@@ -1,6 +1,6 @@
 # Repository Structure for Testing Implementation
 
-Accurate directory structure and file placement guide for https://github.com/cj-juntunen/security-framework-linters
+Repo directory structure and file placement guide for security-framework-linters/
 
 **Repository:** https://github.com/cj-juntunen/security-framework-linters  
 **Last Updated:** 2025-12-03
@@ -8,8 +8,6 @@ Accurate directory structure and file placement guide for https://github.com/cj-
 ---
 
 ## Current Repository Structure
-
-Based on the actual GitHub repository, here is the complete current structure:
 
 ```
 security-framework-linters/
@@ -60,12 +58,14 @@ security-framework-linters/
 │           ├── README.md                # PCI DSS SonarQube guide
 │           └── pci-dss-sss-quality-rules.xml  # PCI DSS quality profile
 │
-├── docs/                                # ✅ EXISTS - Documentation directory
-│   ├── examples/                        # ✅ CI/CD integration examples
+├── docs/                                # Documentation directory
+│   ├── getting-started.md               # Complete beginner's guide
+│   ├── integration-guide.md             # CI/CD integration overview
+│   ├── examples/                        # CI/CD integration examples
 │   │   ├── github-actions-example.md
 │   │   ├── gitlab-ci-example.md
 │   │   └── jenkins-example.md
-│   └── testing/                         # ✅ Testing documentation
+│   └── testing/                         # Testing documentation
 │       ├── implementation summary.md
 │       ├── rule review checklist.md
 │       ├── testing guide.md
@@ -75,24 +75,23 @@ security-framework-linters/
 ├── README.md                            # Main repository README
 ├── CONTRIBUTING.md                      # Contribution guidelines
 ├── LICENSE                              # MIT License
-└── CHANGELOG.md                         # (Plan to add for v1.0.0)
 ```
 
 ---
 
 ## Testing Infrastructure to Add
 
-Here's where to place all the new testing files:
+Here's where to place new testing files:
 
-### New Directory Structure to Create
+### Future Structure
 
 ```
 security-framework-linters/
 │
 ├── .github/                             # PARTIALLY EXISTS
-│   ├── ISSUE_TEMPLATE/                  # ✅ EXISTS
-│   │   ├── bug_report.md                # ✅ EXISTS
-│   │   ├── new_rule.md                  # ✅ EXISTS
+│   ├── ISSUE_TEMPLATE/                  # EXISTS
+│   │   ├── bug_report.md                # EXISTS
+│   │   ├── new_rule.md                  # EXISTS
 │   │   └── feature_request.md           # NEW - Add this
 │   │   └── rule_review.md               # NEW - Add this
 │   │
@@ -105,22 +104,17 @@ security-framework-linters/
 │   ├── getting-started.md               # NEW - Create this (referenced in README)
 │   ├── integration-guide.md             # NEW - Create this (referenced in README)
 │   │
-│   ├── examples/                        # ✅ EXISTS
-│   │   ├── github-actions-example.md    # ✅ EXISTS
-│   │   ├── gitlab-ci-example.md         # ✅ EXISTS
-│   │   └── jenkins-example.md           # ✅ EXISTS
+│   ├── examples/                        # EXISTS
+│   │   ├── github-actions-example.md    # EXISTS
+│   │   ├── gitlab-ci-example.md         # EXISTS
+│   │   └── jenkins-example.md           # EXISTS
 │   │
-│   ├── testing/                         # ✅ EXISTS
-│   │   ├── implementation summary.md    # ✅ EXISTS
-│   │   ├── rule review checklist.md     # ✅ EXISTS
-│   │   ├── testing guide.md             # ✅ EXISTS
-│   │   └── testing quick ref.md         # ✅ EXISTS
+│   ├── testing/                         # EXISTS
+│   │   ├── implementation summary.md    # EXISTS
+│   │   ├── rule review checklist.md     # EXISTS
+│   │   ├── testing guide.md             # EXISTS
+│   │   └── testing quick ref.md         # EXISTS
 │   │
-│   ├── TESTING_GUIDE.md                 # NEW - Move from testing/ or duplicate
-│   ├── TESTING_QUICK_REFERENCE.md       # NEW - Move from testing/ or duplicate
-│   ├── RULE_REVIEW_CHECKLIST.md         # NEW - Move from testing/ or duplicate
-│   ├── RULE_MAINTENANCE.md              # NEW - Create maintenance schedule
-│   └── TESTING_IMPLEMENTATION_SUMMARY.md # NEW - Move from testing/ or duplicate
 │
 ├── tests/                               # NEW - Testing infrastructure
 │   ├── sample-code/
@@ -167,13 +161,13 @@ security-framework-linters/
 │   ├── rule-metrics.sh                  # NEW - Generate metrics
 │   └── setup-dev-environment.sh         # NEW - Global setup
 │
-├── .pre-commit-config.yaml              # ✅ EXISTS - Pre-commit hooks
-├── .yamllint                            # ✅ EXISTS - YAML linting config (named 'yamllint')
-├── .markdownlint.json                   # ✅ EXISTS - Markdown config (named 'markdownlint.json')
+├── .pre-commit-config.yaml              # EXISTS - Pre-commit hooks
+├── .yamllint                            # EXISTS - YAML linting config (named 'yamllint')
+├── .markdownlint.json                   # EXISTS - Markdown config (named 'markdownlint.json')
 ├── .secrets.baseline                    # NEW - Add secrets baseline
 ├── .markdown-link-check.json            # NEW - Add link checking
 │
-└── CHANGELOG.md                         # ✅ EXISTS - Version history
+└── CHANGELOG.md                         # EXISTS - Version history
 ```
 
 ---
