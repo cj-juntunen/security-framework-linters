@@ -1,0 +1,886 @@
+rules:
+  # =============================================================================
+  # SOC 2 Security Common Criteria Rules
+  # Framework: AICPA Trust Services Criteria (2017)
+  # Coverage: CC6, CC7, CC8, CC9
+  # Version: 1.0.0
+  # Last Updated: 2025-12-03
+  # =============================================================================
+
+  # =============================================================================
+  # CC6: Logical and Physical Access Controls
+  # =============================================================================
+
+  # CC6.1: Authentication Required
+  - id: soc2-cc6.1-missing-authentication
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route($PATH)
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              @router.$METHOD($PATH)
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.$METHOD($PATH, function($REQ, $RES) {
+                  ...
+              });
+      - pattern-not-inside: |
+          @login_required
+          ...
+      - pattern-not-inside: |
+          @require_auth
+          ...
+      - pattern-not-inside: |
+          @jwt_required
+          ...
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: "^/api/|^/admin/|^/dashboard/"
+    message: |
+      SOC 2 CC6.1 violation: API endpoint missing authentication.
+      All sensitive endpoints must require authentication before access.
+      Add authentication decorator (@login_required, @jwt_required, etc.).
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-306: Missing Authentication for Critical Function"
+      framework: SOC2
+      criterion: CC6.1
+
+  # CC6.1: Default Deny Access Control
+  - id: soc2-cc6.1-default-allow-access
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def check_permission(...):
+                  ...
+                  return True
+          - pattern: |
+              if not $CONDITION:
+                  pass
+              return True
+          - pattern: |
+              function checkPermission(...) {
+                  ...
+                  return true;
+              }
+    message: |
+      SOC 2 CC6.1 violation: Default allow access control detected.
+      Authorization functions should default to deny (return False/false).
+      Explicitly grant access only when all conditions are met.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-285: Improper Authorization"
+      framework: SOC2
+      criterion: CC6.1
+
+  # CC6.2: Weak Password Requirements
+  - id: soc2-cc6.2-weak-password-length
+    patterns:
+      - pattern-either:
+          - pattern: |
+              if len($PASSWORD) < $N:
+                  ...
+          - pattern: |
+              if $PASSWORD.length < $N
+          - pattern: |
+              password_min_length = $N
+      - metavariable-comparison:
+          metavariable: $N
+          comparison: $N < 12
+    message: |
+      SOC 2 CC6.2 violation: Weak password length requirement.
+      Passwords must be at least 12 characters long.
+      Update minimum password length to 12 or greater.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-521: Weak Password Requirements"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.2: Missing Password Complexity
+  - id: soc2-cc6.2-no-password-complexity
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def validate_password($PASS):
+                  ...
+                  return len($PASS) >= $N
+          - pattern: |
+              function validatePassword($PASS) {
+                  ...
+                  return $PASS.length >= $N;
+              }
+      - pattern-not: re.search(...)
+      - pattern-not: re.match(...)
+      - pattern-not: /.*/.test(...)
+      - pattern-not: pattern.test(...)
+    message: |
+      SOC 2 CC6.2 violation: Password validation missing complexity checks.
+      Passwords must require uppercase, lowercase, numbers, and special characters.
+      Add regex validation for password complexity.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-521: Weak Password Requirements"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.2: Missing Multi-Factor Authentication
+  - id: soc2-cc6.2-no-mfa-admin
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route("/admin/...")
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              if $USER.is_admin:
+                  ...
+      - pattern-not-inside: |
+          @require_mfa
+          ...
+      - pattern-not-inside: |
+          @two_factor_required
+          ...
+      - pattern-not: verify_totp(...)
+      - pattern-not: verify_mfa(...)
+    message: |
+      SOC 2 CC6.2 violation: Administrative function missing MFA requirement.
+      Multi-factor authentication must be enforced for admin operations.
+      Add MFA verification before granting admin access.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-308: Use of Single-factor Authentication"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.2: Insecure Session Cookies
+  - id: soc2-cc6.2-insecure-session-cookie
+    patterns:
+      - pattern-either:
+          - pattern: $RESPONSE.set_cookie($NAME, ..., secure=False, ...)
+          - pattern: $RESPONSE.set_cookie($NAME, ..., httponly=False, ...)
+          - pattern: $RESPONSE.set_cookie($NAME, ..., samesite=None, ...)
+          - pattern: |
+              $RES.cookie($NAME, $VALUE, {
+                  ...,
+                  secure: false,
+                  ...
+              })
+          - pattern: |
+              $RES.cookie($NAME, $VALUE, {
+                  ...,
+                  httpOnly: false,
+                  ...
+              })
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: ".*(session|auth|token).*"
+    message: |
+      SOC 2 CC6.2 violation: Session cookie missing security flags.
+      Session cookies must have Secure, HttpOnly, and SameSite=Strict flags.
+      Update cookie configuration: secure=True, httponly=True, samesite='Strict'
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-614: Sensitive Cookie in HTTPS Session Without Secure Attribute"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.2: Excessive Session Timeout
+  - id: soc2-cc6.2-excessive-session-timeout
+    patterns:
+      - pattern-either:
+          - pattern: |
+              SESSION_TIMEOUT = $N
+          - pattern: |
+              session.timeout = $N
+          - pattern: |
+              maxAge: $N
+      - metavariable-comparison:
+          metavariable: $N
+          comparison: $N > 1800
+    message: |
+      SOC 2 CC6.2 violation: Session timeout exceeds 30 minutes.
+      Sessions must expire after 30 minutes of inactivity.
+      Set session timeout to 1800 seconds (30 minutes) or less.
+    severity: WARNING
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-613: Insufficient Session Expiration"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.2: Session Fixation Vulnerability
+  - id: soc2-cc6.2-session-fixation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def login(...):
+                  ...
+                  $USER = authenticate(...)
+                  ...
+          - pattern: |
+              function login(...) {
+                  ...
+                  $USER = authenticate(...);
+                  ...
+              }
+      - pattern-not: session.regenerate(...)
+      - pattern-not: session.new_id(...)
+      - pattern-not: session_regenerate_id(...)
+    message: |
+      SOC 2 CC6.2 violation: Session not regenerated after authentication.
+      Session IDs must be regenerated after login to prevent fixation attacks.
+      Call session.regenerate() or session_regenerate_id() after authentication.
+    severity: ERROR
+    languages: [python, javascript, typescript, php]
+    metadata:
+      category: security
+      cwe: "CWE-384: Session Fixation"
+      framework: SOC2
+      criterion: CC6.2
+
+  # CC6.6: Hardcoded Credentials
+  - id: soc2-cc6.6-hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "..."
+          - pattern: $VAR = '...'
+          - pattern: const $VAR = "..."
+          - pattern: let $VAR = "..."
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ".*(password|passwd|pwd|secret|api_key|apikey|private_key|access_token).*"
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: "^(?!.*test).*$"
+    message: |
+      SOC 2 CC6.6 violation: Hardcoded credential detected.
+      Credentials must never be hardcoded in source code.
+      Use environment variables or secure secret management systems.
+    severity: ERROR
+    languages: [python, javascript, typescript, java, go]
+    metadata:
+      category: security
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      framework: SOC2
+      criterion: CC6.6
+
+  # CC6.6: Insecure Configuration File Permissions
+  - id: soc2-cc6.6-insecure-config-permissions
+    patterns:
+      - pattern-either:
+          - pattern: os.chmod($PATH, 0o$PERMS)
+          - pattern: fs.chmodSync($PATH, 0o$PERMS)
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: ".*\\.(conf|config|env|ini|yaml|yml).*"
+      - metavariable-regex:
+          metavariable: $PERMS
+          regex: "[67][0-9][0-9]"
+    message: |
+      SOC 2 CC6.6 violation: Configuration file has insecure permissions.
+      Configuration files containing sensitive data must have 0600 permissions.
+      Update to: os.chmod(path, 0o600)
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-732: Incorrect Permission Assignment for Critical Resource"
+      framework: SOC2
+      criterion: CC6.6
+
+  # CC6.7: Missing Role-Based Access Control
+  - id: soc2-cc6.7-missing-rbac-check
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route($PATH)
+              def $FUNC(...):
+                  ...
+                  return ...
+          - pattern: |
+              app.$METHOD($PATH, function($REQ, $RES) {
+                  ...
+              });
+      - pattern-not-inside: |
+          @require_role(...)
+          ...
+      - pattern-not-inside: |
+          if $USER.has_permission(...):
+              ...
+      - pattern-not-inside: |
+          if ($USER.hasRole(...)) {
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: "^/(admin|manage|delete|update|edit)/"
+    message: |
+      SOC 2 CC6.7 violation: Sensitive operation missing role-based access check.
+      Admin/management functions must verify user roles/permissions.
+      Add role check: @require_role('admin') or if user.has_permission(...)
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-862: Missing Authorization"
+      framework: SOC2
+      criterion: CC6.7
+
+  # CC6.7: Privilege Escalation Risk
+  - id: soc2-cc6.7-privilege-escalation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def update_user_role(...):
+                  ...
+                  $USER.role = $NEW_ROLE
+                  ...
+          - pattern: |
+              $USER.is_admin = True
+          - pattern: |
+              $USER.permissions = $NEW_PERMS
+      - pattern-not-inside: |
+          if $CURRENT_USER.is_admin:
+              ...
+      - pattern-not-inside: |
+          @require_role("admin")
+          ...
+    message: |
+      SOC 2 CC6.7 violation: User privilege modification without authorization check.
+      Changing user roles/permissions must require admin authorization.
+      Add authorization check before modifying privileges.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-269: Improper Privilege Management"
+      framework: SOC2
+      criterion: CC6.7
+
+  # =============================================================================
+  # CC7: System Operations
+  # =============================================================================
+
+  # CC7.1: Missing Security Event Logging
+  - id: soc2-cc7.1-missing-security-logging
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def login(...):
+                  ...
+                  return ...
+          - pattern: |
+              def authenticate(...):
+                  ...
+                  return ...
+          - pattern: |
+              function login(...) {
+                  ...
+              }
+      - pattern-not: logger.$METHOD(...)
+      - pattern-not: logging.$METHOD(...)
+      - pattern-not: console.log(...)
+    message: |
+      SOC 2 CC7.1 violation: Authentication function missing security logging.
+      All authentication attempts must be logged for audit trail.
+      Add: logger.info(f"Login attempt: user={username}, ip={ip}, result={result}")
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-778: Insufficient Logging"
+      framework: SOC2
+      criterion: CC7.1
+
+  # CC7.1: Sensitive Data in Logs
+  - id: soc2-cc7.1-sensitive-data-in-logs
+    patterns:
+      - pattern-either:
+          - pattern: logger.$METHOD(..., $VAR, ...)
+          - pattern: logging.$METHOD(..., $VAR, ...)
+          - pattern: console.log(..., $VAR, ...)
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: ".*(password|pwd|secret|token|api_key|ssn|credit_card|cvv|pin).*"
+    message: |
+      SOC 2 CC7.1 violation: Potential logging of sensitive data.
+      Logs must not contain passwords, tokens, API keys, PII, or payment data.
+      Remove sensitive field from logs or use sanitization/masking.
+    severity: ERROR
+    languages: [python, javascript, typescript, java]
+    metadata:
+      category: security
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+      framework: SOC2
+      criterion: CC7.1
+
+  # CC7.1: Unstructured Security Logging
+  - id: soc2-cc7.1-unstructured-logging
+    patterns:
+      - pattern-either:
+          - pattern: logging.$METHOD("...")
+          - pattern: logging.$METHOD(f"...")
+          - pattern: logger.$METHOD("...")
+          - pattern: logger.$METHOD(f"...")
+      - pattern-inside: |
+          def $FUNC(...):
+              ...
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: ".*(login|auth|admin|security|access).*"
+    message: |
+      SOC 2 CC7.1 recommendation: Use structured logging for security events.
+      Structured logs (JSON) enable automated parsing by SIEM systems.
+      Consider using structlog or similar: logger.info("login", user=user, ip=ip)
+    severity: INFO
+    languages: [python]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC7.1
+
+  # CC7.2: Missing Rate Limiting
+  - id: soc2-cc7.2-no-rate-limiting
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route($PATH, methods=["POST"])
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              app.post($PATH, function($REQ, $RES) {
+                  ...
+              });
+      - pattern-not-inside: |
+          @limiter.limit(...)
+          ...
+      - pattern-not-inside: |
+          @ratelimit(...)
+          ...
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: ".*(login|register|password|reset|verify).*"
+    message: |
+      SOC 2 CC7.2 violation: Authentication endpoint missing rate limiting.
+      Rate limiting prevents brute force attacks on authentication.
+      Add: @limiter.limit("5 per minute")
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-307: Improper Restriction of Excessive Authentication Attempts"
+      framework: SOC2
+      criterion: CC7.2
+
+  # CC7.2: Missing Automated Alerting
+  - id: soc2-cc7.2-no-security-alerting
+    patterns:
+      - pattern-either:
+          - pattern: |
+              logger.error($MSG)
+          - pattern: |
+              logger.critical($MSG)
+      - pattern-not: send_alert(...)
+      - pattern-not: alert_team(...)
+      - pattern-not: notify_security(...)
+      - metavariable-regex:
+          metavariable: $MSG
+          regex: ".*(breach|attack|unauthorized|violation|intrusion).*"
+    message: |
+      SOC 2 CC7.2 recommendation: Critical security events should trigger alerts.
+      Consider adding automated alerting for security team notification.
+      Add: send_alert(message, severity='critical')
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC7.2
+
+  # CC7.4: Information Disclosure in Errors
+  - id: soc2-cc7.4-verbose-error-messages
+    patterns:
+      - pattern-either:
+          - pattern: |
+              except $EX as $E:
+                  ...
+                  return ..., str($E), ...
+          - pattern: |
+              catch ($ERR) {
+                  ...
+                  return ...$ERR.message...
+              }
+          - pattern: |
+              return jsonify({"error": str($E)})
+          - pattern: |
+              res.json({ error: $ERR.message })
+    message: |
+      SOC 2 CC7.4 violation: Error message exposes internal details.
+      Error messages to users should be generic to prevent information disclosure.
+      Return generic message: "An error occurred. Please contact support."
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      framework: SOC2
+      criterion: CC7.4
+
+  # CC7.4: Stack Traces in Production
+  - id: soc2-cc7.4-stack-trace-exposure
+    patterns:
+      - pattern-either:
+          - pattern: |
+              app.config["DEBUG"] = True
+          - pattern: |
+              DEBUG = True
+          - pattern: |
+              app.set('debug', true)
+    message: |
+      SOC 2 CC7.4 violation: Debug mode enabled in production.
+      Debug mode exposes stack traces and internal details to users.
+      Set DEBUG=False or NODE_ENV=production for production deployments.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-12: ASP.NET Misconfiguration: Missing Custom Error Page"
+      framework: SOC2
+      criterion: CC7.4
+
+  # CC7.5: Missing Dependency Vulnerability Scanning
+  - id: soc2-cc7.5-no-dependency-scanning
+    patterns:
+      - pattern-either:
+          - pattern: |
+              pip install $PKG
+          - pattern: |
+              npm install $PKG
+      - pattern-not: |
+          pip install ... --require-hashes ...
+    message: |
+      SOC 2 CC7.5 recommendation: Use dependency vulnerability scanning.
+      Regularly scan dependencies for known vulnerabilities.
+      Use: pip-audit, safety, npm audit, or Snyk in CI/CD pipeline.
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-1395: Dependency on Vulnerable Third-Party Component"
+      framework: SOC2
+      criterion: CC7.5
+
+  # =============================================================================
+  # CC8: Change Management
+  # =============================================================================
+
+  # CC8.1: Missing Code Review
+  - id: soc2-cc8.1-todo-security-review
+    patterns:
+      - pattern-either:
+          - pattern: |
+              # TODO: security review
+              ...
+          - pattern: |
+              # FIXME: security
+              ...
+          - pattern: |
+              // TODO: security review
+              ...
+    message: |
+      SOC 2 CC8.1 violation: Security review TODO found.
+      All security-related code changes must be reviewed before deployment.
+      Complete security review and remove TODO comment.
+    severity: WARNING
+    languages: [python, javascript, typescript, java, go]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC8.1
+
+  # CC8.1: No Automated Testing
+  - id: soc2-cc8.1-untested-security-function
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNC(...):
+                  ...
+          - pattern: |
+              function $FUNC(...) {
+                  ...
+              }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: ".*(auth|security|permission|validate|sanitize).*"
+      - pattern-not-inside: |
+          def test_$TESTFUNC(...):
+              ...
+      - pattern-not-inside: |
+          it($DESC, function() {
+              ...
+          });
+    message: |
+      SOC 2 CC8.1 recommendation: Security function missing automated tests.
+      Security-critical functions should have comprehensive test coverage.
+      Add unit and integration tests for authentication/authorization logic.
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC8.1
+
+  # CC8.1: Missing Version Control
+  - id: soc2-cc8.1-production-without-vcs
+    patterns:
+      - pattern-either:
+          - pattern: |
+              # Deployed manually
+              ...
+          - pattern: |
+              # Direct upload to production
+              ...
+    message: |
+      SOC 2 CC8.1 violation: Production deployment without version control.
+      All code changes must be tracked in version control (Git).
+      Use CI/CD pipeline for automated, auditable deployments.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC8.1
+
+  # CC8.2: SQL Injection Vulnerability
+  - id: soc2-cc8.2-sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: $DB.execute(f"... {$VAR} ...")
+          - pattern: $DB.execute("... " + $VAR + " ...")
+          - pattern: $DB.query(`... ${$VAR} ...`)
+          - pattern: $CURSOR.execute(f"... {$VAR} ...")
+    message: |
+      SOC 2 CC8.2 violation: SQL injection vulnerability.
+      Use parameterized queries to prevent SQL injection.
+      Replace with: db.execute("... WHERE id = ?", [var])
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-89: SQL Injection"
+      owasp: "A03:2021 - Injection"
+      framework: SOC2
+      criterion: CC8.2
+
+  # CC8.2: Cross-Site Scripting (XSS)
+  - id: soc2-cc8.2-xss-vulnerability
+    patterns:
+      - pattern-either:
+          - pattern: $ELEMENT.innerHTML = $VAR
+          - pattern: $RESPONSE.write($VAR)
+          - pattern: |
+              render_template_string($VAR)
+    message: |
+      SOC 2 CC8.2 violation: Cross-site scripting (XSS) vulnerability.
+      User input must be properly escaped before rendering.
+      Use: textContent, escape(), or template engine auto-escaping.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+      owasp: "A03:2021 - Injection"
+      framework: SOC2
+      criterion: CC8.2
+
+  # CC8.3: Production Data in Tests
+  - id: soc2-cc8.3-production-data-in-tests
+    patterns:
+      - pattern-either:
+          - pattern: |
+              DATABASE_URL = "postgresql://...@prod..."
+          - pattern: |
+              API_KEY = "pk_live_..."
+      - pattern-inside: |
+          def test_$FUNC(...):
+              ...
+    message: |
+      SOC 2 CC8.3 violation: Production credentials/data used in tests.
+      Tests must use synthetic data and test/sandbox credentials only.
+      Replace with test database URL and test API keys.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-489: Active Debug Code"
+      framework: SOC2
+      criterion: CC8.3
+
+  # =============================================================================
+  # CC9: Risk Mitigation
+  # =============================================================================
+
+  # CC9.1: Missing Input Validation
+  - id: soc2-cc9.1-missing-input-validation
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @app.route($PATH, methods=["POST"])
+              def $FUNC():
+                  $DATA = request.get_json()
+                  ...
+          - pattern: |
+              app.post($PATH, function($REQ, $RES) {
+                  $DATA = $REQ.body;
+                  ...
+              });
+      - pattern-not: validate(...)
+      - pattern-not: $SCHEMA.load(...)
+      - pattern-not: $VALIDATOR.validate(...)
+    message: |
+      SOC 2 CC9.1 violation: User input not validated.
+      All user input must be validated before processing.
+      Add input validation: schema.load(data) or validate(data, rules)
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-20: Improper Input Validation"
+      framework: SOC2
+      criterion: CC9.1
+
+  # CC9.1: Weak Cryptographic Algorithm
+  - id: soc2-cc9.1-weak-crypto
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - pattern: crypto.createHash('md5')
+          - pattern: crypto.createHash('sha1')
+    message: |
+      SOC 2 CC9.1 violation: Weak cryptographic algorithm.
+      MD5 and SHA1 are cryptographically broken.
+      Use SHA-256 or stronger: hashlib.sha256() or crypto.createHash('sha256')
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      framework: SOC2
+      criterion: CC9.1
+
+  # CC9.1: Insecure TLS Configuration
+  - id: soc2-cc9.1-insecure-tls
+    patterns:
+      - pattern-either:
+          - pattern: ssl._create_unverified_context()
+          - pattern: verify=False
+          - pattern: rejectUnauthorized: false
+          - pattern: |
+              requests.get(..., verify=False, ...)
+    message: |
+      SOC 2 CC9.1 violation: TLS certificate verification disabled.
+      Disabling certificate verification enables man-in-the-middle attacks.
+      Remove verify=False and ensure proper certificate validation.
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-295: Improper Certificate Validation"
+      framework: SOC2
+      criterion: CC9.1
+
+  # CC9.2: Third-Party Without Security Review
+  - id: soc2-cc9.2-unvetted-dependency
+    patterns:
+      - pattern-either:
+          - pattern: |
+              pip install $PKG
+          - pattern: |
+              npm install $PKG
+      - metavariable-regex:
+          metavariable: $PKG
+          regex: "^[^@].*$"
+    message: |
+      SOC 2 CC9.2 recommendation: Pin dependency versions.
+      Unpinned dependencies introduce supply chain risk.
+      Use version pinning: pip install package==1.2.3 or npm install package@1.2.3
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      cwe: "CWE-829: Inclusion of Functionality from Untrusted Control Sphere"
+      framework: SOC2
+      criterion: CC9.2
+
+  # CC9.3: Missing Backup Configuration
+  - id: soc2-cc9.3-no-backup-strategy
+    patterns:
+      - pattern: |
+          # No backup configured
+          ...
+    message: |
+      SOC 2 CC9.3 recommendation: Implement automated backup strategy.
+      Business continuity requires regular automated backups.
+      Configure automated backups with tested restoration procedures.
+    severity: INFO
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC9.3
+
+  # CC9.3: Missing Error Resilience
+  - id: soc2-cc9.3-no-error-handling
+    patterns:
+      - pattern-either:
+          - pattern: |
+              def $FUNC(...):
+                  $EXTERNAL_CALL(...)
+                  ...
+          - pattern: |
+              function $FUNC(...) {
+                  $EXTERNAL_CALL(...);
+                  ...
+              }
+      - pattern-not-inside: |
+          try:
+              ...
+          except:
+              ...
+      - pattern-not-inside: |
+          try {
+              ...
+          } catch (...) {
+              ...
+          }
+      - metavariable-regex:
+          metavariable: $EXTERNAL_CALL
+          regex: ".*(requests|fetch|http|api|client).*"
+    message: |
+      SOC 2 CC9.3 recommendation: External API call without error handling.
+      Implement try/catch blocks and circuit breakers for resilience.
+      Add error handling and fallback logic for external dependencies.
+    severity: WARNING
+    languages: [python, javascript, typescript]
+    metadata:
+      category: security
+      framework: SOC2
+      criterion: CC9.3
