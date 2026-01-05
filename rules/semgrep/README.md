@@ -1,104 +1,150 @@
-# Semgrep Rules for Compliance Frameworks
+# Semgrep Rules
 
-This directory contains ready-to-use [Semgrep](https://semgrep.dev/) rule configurations for various security and compliance frameworks.
+Automated compliance checking with Semgrep - a fast, multi-language static analysis tool.
 
-## What is Semgrep?
+## Why Semgrep?
 
-Semgrep is a fast, open-source static analysis tool that finds bugs and enforces code standards. It works across 30+ languages and can run locally or in CI/CD pipelines.
+- **Multi-language**: Python, JavaScript, Java, Go, Ruby, C/C++, PHP, and more
+- **Fast**: Scans codebases in seconds, not minutes
+- **Easy to customize**: YAML-based rules are simple to read and modify
+- **Great CI/CD support**: Official GitHub Action, works everywhere
+- **Free and open source**: No licensing costs
 
-## Available Rule Sets
+If you're not locked into ESLint or SonarQube, start here.
 
-| Framework | Directory | Rules | Status |
-|-----------|-----------|-------|--------|
-| **PCI DSS** | `pci-dss/` | 42+ | 🚧 In Progress |
-| **SOC 2** | `soc2/` | Coming Soon | 📋 Planned |
-| **HIPAA** | `hipaa/` | Coming Soon | 📋 Planned |
+## Installation
 
-## Quick Start
+### macOS/Linux
 
-### Installation
+```bash
+# Using pip (recommended)
+pip3 install semgrep
+
+# Using Homebrew (macOS)
+brew install semgrep
+
+# Verify installation
+semgrep --version
+```
+
+### Windows
 
 ```bash
 # Using pip
 pip install semgrep
 
-# Using Homebrew (macOS)
-brew install semgrep
-
-# Using Docker
-docker pull semgrep/semgrep
+# Or WSL (recommended for best experience)
+wsl pip3 install semgrep
 ```
 
-### Running Rules Against Your Code
+## Quick Start
 
-#### Option 1: Run All Rules for a Framework
 ```bash
-# From repository root
-semgrep --config rules/semgrep/pci-dss/ /path/to/your/code
+# Clone this repository
+git clone https://github.com/cj-juntunen/security-framework-linters.git
+cd security-framework-linters
 
-# Run PCI DSS Core Requirements only
-semgrep --config rules/semgrep/pci-dss/core.yaml /path/to/your/code
+# Scan with PCI DSS rules
+semgrep --config rules/semgrep/pci-dss/ /path/to/your/code/
+
+# Scan with SOC 2 rules
+semgrep --config rules/semgrep/soc2/ /path/to/your/code/
+
+# Scan with both
+semgrep --config rules/semgrep/ /path/to/your/code/
 ```
 
-#### Option 2: Run Specific Rule File
+## Available Rule Sets
+
+### PCI DSS Secure Software Standard
+
+| File | Coverage | Rules | Languages |
+|------|----------|-------|-----------|
+| `pci-dss/core.yaml` | Core security requirements | 42 | All |
+| `pci-dss/account-data.yaml` | Payment card data handling | 60+ | All |
+| `pci-dss/terminal.yaml` | Terminal/POS software | 30+ | C/C++, Java |
+| `pci-dss/web-app.yaml` | Web application security | 45+ | JS, Python, Java |
+
+[Framework documentation →](../../frameworks/pci-dss/)
+
+### SOC 2 Trust Services Criteria
+
+| File | Coverage | Rules | Languages |
+|------|----------|-------|-----------|
+| `soc2/security.yaml` | All CC6-CC9 controls | 100+ | All |
+
+[Framework documentation →](../../frameworks/soc2/)
+
+## Running Scans
+
+### Basic Usage
+
 ```bash
-# Run only account data protection rules
-semgrep --config rules/semgrep/pci-dss/module-a-account-data.yaml ./
+# Scan current directory
+semgrep --config rules/semgrep/pci-dss/ .
+
+# Scan specific directory
+semgrep --config rules/semgrep/pci-dss/ src/payment/
+
+# Scan specific files
+semgrep --config rules/semgrep/pci-dss/ src/auth.py src/payment.py
 ```
 
-#### Option 3: Run from Current Directory
+### Filter by Severity
+
 ```bash
-# If you're in your project directory
-semgrep --config /path/to/compliance-rules/rules/semgrep/pci-dss/ .
+# Only critical errors
+semgrep --config rules/semgrep/pci-dss/ --severity ERROR .
+
+# Errors and warnings
+semgrep --config rules/semgrep/pci-dss/ \
+        --severity ERROR --severity WARNING .
+```
+
+### Filter by File Type
+
+```bash
+# Python files only
+semgrep --config rules/semgrep/pci-dss/ --include "*.py" .
+
+# JavaScript/TypeScript
+semgrep --config rules/semgrep/pci-dss/ \
+        --include "*.js" --include "*.ts" .
+
+# Exclude tests
+semgrep --config rules/semgrep/pci-dss/ \
+        --exclude "test_*.py" --exclude "*.test.js" .
 ```
 
 ### Output Formats
 
 ```bash
-# Human-readable output (default)
+# Default output (terminal)
 semgrep --config rules/semgrep/pci-dss/ .
 
-# JSON output for CI/CD integration
+# JSON for parsing
 semgrep --config rules/semgrep/pci-dss/ --json . > results.json
 
-# SARIF format (for GitHub Code Scanning)
+# SARIF for GitHub/GitLab
 semgrep --config rules/semgrep/pci-dss/ --sarif . > results.sarif
 
-# JUnit XML (for test reporting tools)
+# JUnit XML for Jenkins
 semgrep --config rules/semgrep/pci-dss/ --junit-xml . > results.xml
-```
-
-### Filtering Results
-
-```bash
-# Only show ERROR severity
-semgrep --config rules/semgrep/pci-dss/ --severity ERROR .
-
-# Exclude test files
-semgrep --config rules/semgrep/pci-dss/ --exclude "tests/**" .
-
-# Scan only specific file types
-semgrep --config rules/semgrep/pci-dss/ --include "*.py" --include "*.js" .
 ```
 
 ## CI/CD Integration
 
 ### GitHub Actions
 
-Create `.github/workflows/compliance-check.yml`:
+Create `.github/workflows/semgrep.yml`:
 
 ```yaml
-name: Compliance Check
-
-on:
-  pull_request:
-  push:
-    branches: [main, develop]
+name: Semgrep
+on: [pull_request, push]
 
 jobs:
   semgrep:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
       
@@ -106,7 +152,8 @@ jobs:
         uses: returntocorp/semgrep-action@v1
         with:
           config: >-
-            rules/semgrep/pci-dss/
+            rules/semgrep/pci-dss/core.yaml
+            rules/semgrep/pci-dss/account-data.yaml
 ```
 
 ### GitLab CI
@@ -114,13 +161,13 @@ jobs:
 Add to `.gitlab-ci.yml`:
 
 ```yaml
-compliance-check:
+semgrep:
   image: returntocorp/semgrep
   script:
-    - semgrep --config rules/semgrep/pci-dss/ --sarif . > semgrep.sarif
+    - semgrep --config rules/semgrep/pci-dss/ --gitlab-sast . > gl-sast-report.json
   artifacts:
     reports:
-      sast: semgrep.sarif
+      sast: gl-sast-report.json
 ```
 
 ### Jenkins
@@ -130,44 +177,23 @@ pipeline {
     agent any
     
     stages {
-        stage('Compliance Scan') {
+        stage('Semgrep Scan') {
             steps {
-                sh 'pip install semgrep'
-                sh 'semgrep --config rules/semgrep/pci-dss/ --json . > results.json'
+                sh '''
+                    pip install semgrep
+                    semgrep --config rules/semgrep/pci-dss/ \
+                            --json . > semgrep-results.json
+                '''
             }
         }
     }
 }
 ```
 
-### CircleCI
-
-Add to `.circleci/config.yml`:
-
-```yaml
-version: 2.1
-
-jobs:
-  compliance-check:
-    docker:
-      - image: returntocorp/semgrep
-    steps:
-      - checkout
-      - run:
-          name: Run Semgrep
-          command: |
-            semgrep --config rules/semgrep/pci-dss/ .
-```
-
-## Local Development Workflow
-
 ### Pre-commit Hook
 
-Install as a pre-commit hook to catch issues before committing:
+Add to `.pre-commit-config.yaml`:
 
-1. Install pre-commit: `pip install pre-commit`
-
-2. Create `.pre-commit-config.yaml`:
 ```yaml
 repos:
   - repo: https://github.com/returntocorp/semgrep
@@ -177,191 +203,211 @@ repos:
         args: ['--config', 'rules/semgrep/pci-dss/', '--error']
 ```
 
-3. Install the hook: `pre-commit install`
+## Handling False Positives
 
-### VS Code Integration
-
-1. Install the [Semgrep VS Code Extension](https://marketplace.visualstudio.com/items?itemName=Semgrep.semgrep)
-
-2. Configure in `.vscode/settings.json`:
-```json
-{
-  "semgrep.scan.configuration": [
-    "rules/semgrep/pci-dss/"
-  ],
-  "semgrep.scan.onSave": true
-}
-```
-
-## Understanding Results
-
-### Severity Levels
-
-- **ERROR**: Critical security issues that must be fixed
-- **WARNING**: Important issues that should be reviewed
-- **INFO**: Informational findings for awareness
-
-### Sample Output
-
-```
-Findings:
-
-  rules/semgrep/pci-dss/core.yaml
-  ❯❯❱ pci-sss-core-4.1-hardcoded-key
-     Hardcoded cryptographic key detected
-     
-      33┆ ENCRYPTION_KEY = "abc123def456"
-      
-     PCI SSS Core 4.1 requires keys to be stored in secure key management systems.
-     https://docs.pcicompliancestandards.org/
-```
-
-## Ignoring False Positives
-
-### Inline Comments
+### Inline Suppression
 
 ```python
+# nosemgrep: rule-id
+code_here  # Must include explanation
+
+# Example with full documentation
 # nosemgrep: pci-sss-core-1.1-sql-injection
-query = f"SELECT * FROM logs WHERE date = {safe_date_value}"
+# Exception: table_name validated against enum, not user input
+# Approved: security@company.com (2025-01-05)
+# Ticket: SEC-789
+query = f"SELECT * FROM {VALIDATED_TABLE}"
 ```
 
-```javascript
-// nosemgrep: pci-sss-core-1.2-xss-innerhtml
-element.innerHTML = TRUSTED_CONSTANT;
-```
-
-### Configuration File
+### Ignore File
 
 Create `.semgrepignore`:
+
 ```
 # Ignore test files
 tests/
-test_*.py
-*.test.js
+**/*.test.js
+**/*.spec.ts
+
+# Ignore third-party code
+node_modules/
+vendor/
 
 # Ignore generated code
 build/
 dist/
-node_modules/
-
-# Ignore specific files
-legacy/old_payment_module.py
-```
-
-Create `semgrep.yml` for fine-grained control:
-```yaml
-rules:
-  - id: pci-sss-core-4.1-hardcoded-key
-    paths:
-      exclude:
-        - "tests/"
-        - "examples/"
 ```
 
 ## Performance Optimization
 
-### Scanning Large Codebases
+### Scan Only Changed Files
 
 ```bash
-# Use multiple jobs for faster scanning
-semgrep --config rules/semgrep/pci-dss/ --jobs 4 .
-
-# Scan only changed files (in CI)
+# In CI/CD, scan git diff
 git diff --name-only --diff-filter=ACM origin/main \
   | xargs semgrep --config rules/semgrep/pci-dss/
 ```
 
-### Caching Results
+### Parallel Execution
 
 ```bash
-# Enable caching (speeds up subsequent runs)
+# Use all CPU cores
+semgrep --config rules/semgrep/pci-dss/ --jobs $(nproc) .
+
+# Or specify number
+semgrep --config rules/semgrep/pci-dss/ --jobs 4 .
+```
+
+### Enable Caching
+
+```bash
+# Enable metrics and caching
 semgrep --config rules/semgrep/pci-dss/ --enable-metrics .
-```
-
-## Customizing Rules
-
-### Extending Existing Rules
-
-Create your own rule file that imports ours:
-
-`custom-rules.yaml`:
-```yaml
-rules:
-  # Import base PCI DSS rules
-  - id: extend-pci-rules
-    pattern-sources:
-      - rules/semgrep/pci-dss/core.yaml
-  
-  # Add your custom rule
-  - id: company-specific-check
-    pattern: internal_dangerous_function($X)
-    message: This function is banned per company policy
-    severity: ERROR
-    languages: [python]
-```
-
-### Overriding Severity
-
-```yaml
-rules:
-  - id: pci-sss-core-2.1-weak-password-length
-    severity: ERROR  # Override from WARNING to ERROR
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### "Command not found: semgrep"
 
-**Issue**: "Rule not found"
 ```bash
-# Solution: Use absolute path or clone the repo
-git clone https://github.com/yourusername/compliance-rules.git
-semgrep --config /full/path/to/compliance-rules/rules/semgrep/pci-dss/ .
+# Try pip instead of pip3
+pip install semgrep
+
+# Or specify full path
+python3 -m pip install semgrep
+
+# Check if it's in PATH
+which semgrep
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**Issue**: "Too many results"
+### Too Many Results
+
 ```bash
-# Solution: Start with high-severity issues only
+# Start with one module
+semgrep --config rules/semgrep/pci-dss/core.yaml .
+
+# Or just ERROR severity
 semgrep --config rules/semgrep/pci-dss/ --severity ERROR .
+
+# Or specific directory
+semgrep --config rules/semgrep/pci-dss/ src/payment/
 ```
 
-**Issue**: "Slow scanning"
+### Scan Too Slow
+
 ```bash
-# Solution: Exclude unnecessary directories
+# Exclude large directories
 semgrep --config rules/semgrep/pci-dss/ \
-  --exclude "node_modules" \
-  --exclude "venv" \
-  --exclude ".git" .
+        --exclude "node_modules/" --exclude "venv/" .
+
+# Use parallel jobs
+semgrep --config rules/semgrep/pci-dss/ --jobs 4 .
 ```
 
-## Best Practices
+## Rule Selection Guide
 
-1. **Start Small**: Begin with ERROR-severity rules only
-2. **Integrate Early**: Add to CI/CD from day one
-3. **Fix Incrementally**: Address findings in batches
-4. **Document Exceptions**: Always comment why you're ignoring a rule
-5. **Regular Updates**: Pull latest rules monthly
-6. **Team Training**: Share findings in code reviews for learning
+### Minimum Viable Compliance
+
+**All applications**:
+```bash
+semgrep --config rules/semgrep/pci-dss/core.yaml .
+```
+
+**Handling payment cards**:
+```bash
+semgrep --config rules/semgrep/pci-dss/core.yaml \
+        --config rules/semgrep/pci-dss/account-data.yaml .
+```
+
+**Web applications**:
+```bash
+semgrep --config rules/semgrep/pci-dss/core.yaml \
+        --config rules/semgrep/pci-dss/account-data.yaml \
+        --config rules/semgrep/pci-dss/web-app.yaml .
+```
+
+**Terminal/POS software**:
+```bash
+semgrep --config rules/semgrep/pci-dss/core.yaml \
+        --config rules/semgrep/pci-dss/account-data.yaml \
+        --config rules/semgrep/pci-dss/terminal.yaml .
+```
+
+### SOC 2 Compliance
+
+```bash
+semgrep --config rules/semgrep/soc2/ .
+```
+
+## Advanced Usage
+
+### Custom Config Files
+
+Create `semgrep-config.yaml`:
+
+```yaml
+rules:
+  - rules/semgrep/pci-dss/core.yaml
+  - rules/semgrep/pci-dss/account-data.yaml
+
+# Organization-specific overrides
+  - id: custom-sql-injection
+    severity: ERROR  # Upgrade from WARNING
+```
+
+Run with:
+```bash
+semgrep --config semgrep-config.yaml .
+```
+
+### Baseline for Legacy Code
+
+```bash
+# Create baseline
+semgrep --config rules/semgrep/pci-dss/ --baseline . > baseline.json
+
+# Run against baseline (only show new issues)
+semgrep --config rules/semgrep/pci-dss/ --baseline baseline.json .
+```
+
+## IDE Integration
+
+### VS Code
+
+1. Install [Semgrep Extension](https://marketplace.visualstudio.com/items?itemName=Semgrep.semgrep)
+2. Add to `.vscode/settings.json`:
+
+```json
+{
+  "semgrep.configPath": "rules/semgrep/pci-dss/"
+}
+```
+
+### IntelliJ IDEA / PyCharm
+
+1. Install Semgrep plugin from marketplace
+2. Configure in Settings → Tools → Semgrep
+3. Point to `rules/semgrep/pci-dss/`
 
 ## Resources
 
+**Official Docs**:
 - [Semgrep Documentation](https://semgrep.dev/docs/)
-- [Semgrep Tutorial](https://semgrep.dev/learn)
-- [Semgrep Community Slack](https://go.semgrep.dev/slack)
-- [Report Issues](https://github.com/yourusername/compliance-rules/issues)
+- [Rule Syntax](https://semgrep.dev/docs/writing-rules/overview/)
+- [Semgrep Playground](https://semgrep.dev/playground/)
 
-## Framework-Specific Documentation
+**This Project**:
+- [Framework Documentation](../../frameworks/) - Understand the requirements
+- [Master Rules Guide](../README.md) - Compare tools
+- [Integration Guide](../../docs/integration-guide.md) - CI/CD deep dive
 
-For detailed information about rules in each framework:
-
-- **[PCI DSS Rules](pci-dss/README.md)** - Payment Card Industry requirements
-- **[SOC 2 Rules](soc2/README.md)** - Trust Services Criteria
-- **[HIPAA Rules](hipaa/README.md)** - Healthcare data protection
-
-## Contributing
-
-Found a false positive? Have a suggestion? See the [Contributing Guide](../../CONTRIBUTING.md).
+**Support**:
+- [Semgrep Community](https://semgrep.dev/community/)
+- [GitHub Issues](https://github.com/cj-juntunen/security-framework-linters/issues)
 
 ---
 
-**Need help?** Open an issue or discussion in the main repository.
+For framework-specific rule details, see:
+- [PCI DSS Rules](pci-dss/README.md)
+- [SOC 2 Rules](soc2/README.md)
