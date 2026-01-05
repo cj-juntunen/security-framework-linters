@@ -1,92 +1,176 @@
-# ESLint Rules for Compliance Frameworks
+# ESLint Rules
 
-This directory contains [ESLint](https://eslint.org/) configurations for security and compliance frameworks, specifically for JavaScript and TypeScript projects.
+Automated compliance checking for JavaScript and TypeScript projects using ESLint.
 
-## What is ESLint?
+## Why ESLint?
 
-ESLint is a pluggable linting utility for JavaScript and TypeScript that identifies and reports on patterns in code. It's the most popular linter in the JavaScript ecosystem.
+- **JavaScript/TypeScript focus**: Deep language understanding
+- **Ecosystem integration**: Works with existing JS tooling
+- **IDE support**: Real-time feedback in all major editors
+- **Auto-fix capabilities**: Many violations can be fixed automatically
+- **Industry standard**: Already familiar to most JS developers
 
-## Available Rule Sets
+If your project is JavaScript or TypeScript, this is your best option for comprehensive static analysis.
 
-| Framework | Configuration File | Rules | Status |
-|-----------|-------------------|-------|--------|
-| **PCI DSS** | `pci-dss.js` | 45+ | 🚧 In Progress |
-| **SOC 2** | `soc2.js` | Coming Soon | 📋 Planned  |
-| **HIPAA** | `hipaa.js` | Coming Soon | 📋 Planned |
+## Installation
 
-## Quick Start
-
-### Installation
+### Basic Setup
 
 ```bash
 # Install ESLint
 npm install --save-dev eslint
 
-# Install required plugins
+# Install required security plugins
 npm install --save-dev \
   eslint-plugin-security \
   eslint-plugin-no-secrets \
+  eslint-plugin-no-unsanitized
+```
+
+### For TypeScript Projects
+
+```bash
+# Add TypeScript support
+npm install --save-dev \
   @typescript-eslint/eslint-plugin \
   @typescript-eslint/parser
 ```
 
-### Configuration
+### For React Projects
 
-#### Option 1: Extend Our Config (Recommended)
+```bash
+# Add React-specific rules
+npm install --save-dev \
+  eslint-plugin-react \
+  eslint-plugin-react-hooks \
+  eslint-plugin-jsx-a11y
+```
 
-Create or update `.eslintrc.js` in your project root:
+## Quick Start
+
+### 1. Configure ESLint
+
+Create `.eslintrc.js` in your project root:
 
 ```javascript
 module.exports = {
   extends: [
-    './node_modules/compliance-rules/rules/eslint/pci-dss.js'
+    './node_modules/security-framework-linters/rules/eslint/pci-dss/pci-dss-core.js'
+  ]
+};
+```
+
+### 2. Run ESLint
+
+```bash
+# Scan entire project
+npx eslint .
+
+# Scan specific files
+npx eslint src/
+
+# Auto-fix where possible
+npx eslint . --fix
+```
+
+## Available Rule Sets
+
+### PCI DSS Secure Software Standard
+
+| Configuration | Coverage | Rules | Use When |
+|---------------|----------|-------|----------|
+| `pci-dss-core.js` | Core security | 42 | All JS/TS projects |
+| `pci-dss-account-data.js` | Payment card handling | 60+ | Handling card data |
+| `pci-dss-web-app.js` | Web security | 45+ | Web applications |
+
+Note: Module B (Terminal Software) is not applicable to JavaScript - use C/C++ tools instead.
+
+[Framework documentation →](../../frameworks/pci-dss/)
+
+### Configuration Examples
+
+**Basic web application**:
+```javascript
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js',
+    './rules/eslint/pci-dss/pci-dss-web-app.js'
+  ]
+};
+```
+
+**E-commerce with payment processing**:
+```javascript
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js',
+    './rules/eslint/pci-dss/pci-dss-account-data.js',
+    './rules/eslint/pci-dss/pci-dss-web-app.js'
+  ]
+};
+```
+
+**With custom overrides**:
+```javascript
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js'
   ],
-  // Your custom overrides
   rules: {
-    // Override specific rules if needed
+    // Downgrade specific rule for legacy code
+    'pci-dss/no-sql-injection': 'warn',  // ERROR -> WARN
+    
+    // Your custom rules
+    'no-console': 'error'
   }
 };
 ```
 
-#### Option 2: Import as Shareable Config
+## Running ESLint
 
-If you've published these rules as an npm package:
-
-```javascript
-module.exports = {
-  extends: [
-    '@yourorg/eslint-config-pci-dss'
-  ]
-};
-```
-
-#### Option 3: Direct File Reference
-
-```javascript
-module.exports = {
-  extends: [
-    '/path/to/compliance-rules/rules/eslint/pci-dss.js'
-  ]
-};
-```
-
-### Running ESLint
+### Command Line
 
 ```bash
-# Lint all JavaScript/TypeScript files
+# Basic scan
 npx eslint .
 
-# Lint specific directory
-npx eslint src/
+# Specific directory
+npx eslint src/payment/
 
-# Lint specific files
-npx eslint src/payment-processor.js
+# Specific files
+npx eslint src/auth.js src/payment.js
 
-# Auto-fix issues where possible
+# Auto-fix issues
 npx eslint . --fix
 
-# Output to file
-npx eslint . --output-file eslint-report.json --format json
+# Fail on warnings
+npx eslint . --max-warnings 0
+```
+
+### Output Formats
+
+```bash
+# Default (terminal)
+npx eslint .
+
+# HTML report
+npx eslint . --format html --output-file report.html
+
+# JSON for parsing
+npx eslint . --format json --output-file results.json
+
+# Stylish (formatted terminal output)
+npx eslint . --format stylish
+```
+
+### Filter by Severity
+
+```bash
+# Only errors (no warnings)
+npx eslint . --quiet
+
+# All issues
+npx eslint .
 ```
 
 ## CI/CD Integration
@@ -96,15 +180,11 @@ npx eslint . --output-file eslint-report.json --format json
 Create `.github/workflows/eslint.yml`:
 
 ```yaml
-name: ESLint Compliance Check
-
-on:
-  pull_request:
-  push:
-    branches: [main, develop]
+name: ESLint
+on: [pull_request, push]
 
 jobs:
-  eslint:
+  lint:
     runs-on: ubuntu-latest
     
     steps:
@@ -121,13 +201,6 @@ jobs:
       
       - name: Run ESLint
         run: npx eslint . --max-warnings 0
-      
-      - name: Annotate Code
-        if: failure()
-        uses: ataylorme/eslint-annotate-action@v2
-        with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          report-json: "eslint-report.json"
 ```
 
 ### GitLab CI
@@ -140,190 +213,99 @@ eslint:
   stage: test
   script:
     - npm ci
-    - npx eslint . --format gitlab > eslint-report.json
+    - npx eslint . --format json --output-file eslint-report.json
   artifacts:
     reports:
       codequality: eslint-report.json
-    when: always
 ```
 
-### package.json Scripts
+### Pre-commit Hook
 
-Add convenience scripts to your `package.json`:
+Add to `package.json`:
 
 ```json
 {
-  "scripts": {
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "lint:pci": "eslint . --config rules/eslint/pci-dss.js",
-    "lint:report": "eslint . --format html --output-file eslint-report.html"
-  }
-}
-```
-
-## TypeScript Projects
-
-### Additional Setup
-
-For TypeScript projects, update your `.eslintrc.js`:
-
-```javascript
-module.exports = {
-  extends: [
-    './node_modules/compliance-rules/rules/eslint/pci-dss.js'
-  ],
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    ecmaVersion: 2022,
-    sourceType: 'module',
-    project: './tsconfig.json'
-  },
-  plugins: ['@typescript-eslint'],
-  rules: {
-    // TypeScript-specific rule overrides
-  }
-};
-```
-
-## React Projects
-
-### Configuration for React
-
-```javascript
-module.exports = {
-  extends: [
-    './node_modules/compliance-rules/rules/eslint/pci-dss.js',
-    'plugin:react/recommended',
-    'plugin:react-hooks/recommended'
-  ],
-  settings: {
-    react: {
-      version: 'detect'
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
     }
   },
-  rules: {
-    'react/no-danger': 'error', // PCI DSS XSS prevention
-    'react/no-danger-with-children': 'error'
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx}": ["eslint --fix", "git add"]
   }
-};
-```
-
-## Understanding Rules
-
-### Rule Format
-
-Each rule in our configuration follows this structure:
-
-```javascript
-{
-  'rule-name': ['error', { /* options */ }]
-  //           ^level    ^configuration
 }
 ```
 
-**Severity Levels:**
-- `'off'` or `0` - Disabled
-- `'warn'` or `1` - Warning (doesn't fail build)
-- `'error'` or `2` - Error (fails build)
-
-### PCI DSS Rule Categories
-
-Our PCI DSS configuration is organized by compliance requirements:
-
-1. **Input Validation** (`security/detect-*`)
-2. **Output Encoding** (`no-unsanitized/*`)
-3. **Authentication** (`no-secrets/*`)
-4. **Cryptography** (`security/detect-*-cipher`)
-5. **Logging** (`no-console`, `security/detect-*-log`)
-
-### Sample Output
-
-```
-/src/payment.js
-  12:5   error    Potential SQL injection vulnerability           security/detect-sql-injection
-  24:10  error    Hardcoded secret detected                       no-secrets/no-secrets
-  35:3   warning  console.log may expose sensitive data           no-console
-  47:8   error    dangerouslySetInnerHTML usage without DOMPurify react/no-danger
-
-✖ 4 problems (3 errors, 1 warning)
+Install:
+```bash
+npm install --save-dev husky lint-staged
+npx husky install
 ```
 
-## Disabling Rules
+## Handling False Positives
 
-### Inline Comments
+### Inline Suppression
 
 ```javascript
-// Disable for single line
-// eslint-disable-next-line security/detect-object-injection
-const value = obj[userInput];
+// Disable next line
+// eslint-disable-next-line pci-dss/no-sql-injection
+const query = `SELECT * FROM ${SAFE_TABLE}`;  // Table is from enum
 
-// Disable for entire file
-/* eslint-disable security/detect-sql-injection */
-// Legacy code with compensating controls
-const query = buildQuery(userInput);
-/* eslint-enable security/detect-sql-injection */
+// Disable entire file
+/* eslint-disable pci-dss/no-sql-injection */
+// Legacy code - migration ticket: SEC-123
 
-// Disable specific rule
-const html = content; // eslint-disable-line no-unsanitized/property
+// Disable for block
+/* eslint-disable pci-dss/no-sql-injection */
+unsafe_code_here();
+/* eslint-enable pci-dss/no-sql-injection */
 ```
 
-### Configuration File
-
-In `.eslintrc.js`:
+### Always Document Why
 
 ```javascript
-module.exports = {
-  extends: ['./rules/eslint/pci-dss.js'],
-  rules: {
-    // Disable specific rule
-    'no-secrets/no-secrets': 'off',
-    
-    // Change severity
-    'security/detect-object-injection': 'warn',
-    
-    // Add exceptions
-    'no-console': ['error', { allow: ['warn', 'error'] }]
-  }
-};
+// BAD - No explanation
+// eslint-disable-next-line pci-dss/no-pan-in-localstorage
+localStorage.setItem('token', token);
+
+// GOOD - Clear justification
+// eslint-disable-next-line pci-dss/no-pan-in-localstorage
+// Exception: This is a payment token, not PAN
+// Approved by: security@company.com (2025-01-05)
+// Ticket: SEC-456
+localStorage.setItem('paymentToken', token);
 ```
 
-### .eslintignore File
+### Ignore Files
 
-Create `.eslintignore` to exclude files:
+Create `.eslintignore`:
 
 ```
 # Dependencies
 node_modules/
-bower_components/
+vendor/
 
 # Build output
 dist/
 build/
-*.min.js
 
-# Test files (if not applying compliance rules)
+# Test files (if needed)
 **/*.test.js
 **/*.spec.ts
 
-# Legacy code
-legacy/
-vendor/
-
-# Configuration
-*.config.js
+# Generated code
+src/generated/
 ```
 
 ## IDE Integration
 
 ### VS Code
 
-1. Install [ESLint Extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+1. Install [ESLint extension](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+2. Add to `.vscode/settings.json`:
 
-2. Configure in `.vscode/settings.json`:
 ```json
 {
-  "eslint.enable": true,
   "eslint.validate": [
     "javascript",
     "javascriptreact",
@@ -332,244 +314,186 @@ vendor/
   ],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
-  },
-  "eslint.options": {
-    "configFile": ".eslintrc.js"
   }
 }
 ```
 
-### WebStorm / IntelliJ IDEA
+### IntelliJ IDEA / WebStorm
 
-1. Go to **Settings → Languages & Frameworks → JavaScript → Code Quality Tools → ESLint**
-2. Select **Automatic ESLint configuration**
-3. Check **Run eslint --fix on save**
+1. Settings → Languages & Frameworks → JavaScript → Code Quality Tools → ESLint
+2. Check "Automatic ESLint configuration"
+3. Enable "Run eslint --fix on save"
 
-### Sublime Text
+## Troubleshooting
 
-1. Install **SublimeLinter** and **SublimeLinter-eslint**
-2. Configure in user settings
-
-## Output Formats
+### "Cannot find module 'eslint-plugin-security'"
 
 ```bash
-# Stylish (default, human-readable)
-npx eslint . --format stylish
+# Install missing plugin
+npm install --save-dev eslint-plugin-security
 
-# JSON (for CI/CD processing)
-npx eslint . --format json > eslint-report.json
-
-# HTML report
-npx eslint . --format html > eslint-report.html
-
-# JUnit XML (for test reporting)
-npx eslint . --format junit > eslint-junit.xml
-
-# Checkstyle (for Sonar integration)
-npx eslint . --format checkstyle > eslint-checkstyle.xml
-
-# Table format
-npx eslint . --format table
+# Or reinstall all dependencies
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-## Performance Optimization
+### "Parsing error: Unexpected token"
 
-### Caching
-
-Enable caching for faster subsequent runs:
-
-```bash
-# Enable cache
-npx eslint . --cache
-
-# Specify cache location
-npx eslint . --cache --cache-location .eslintcache
-```
-
-Add to `.gitignore`:
-```
-.eslintcache
-```
-
-### Parallel Processing
-
-```bash
-# Lint with multiple threads (npm 7+)
-npm run lint -- --max-warnings 0
-```
-
-### Selective Linting
-
-```bash
-# Lint only staged files (with lint-staged)
-npx lint-staged
-
-# Lint only changed files in PR
-git diff --name-only --diff-filter=d origin/main | grep -E '\.(js|ts)x?$' | xargs eslint
-```
-
-## Pre-commit Hooks
-
-### Using Husky + lint-staged
-
-```bash
-npm install --save-dev husky lint-staged
-npx husky install
-```
-
-Add to `package.json`:
-
-```json
-{
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "git add"
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  }
-}
-```
-
-## Customization Examples
-
-### Adding Company-Specific Rules
-
+For TypeScript:
 ```javascript
-// .eslintrc.js
+// Add to .eslintrc.js
 module.exports = {
-  extends: ['./rules/eslint/pci-dss.js'],
-  rules: {
-    // Enforce specific logging library
-    'no-console': 'error',
-    'no-restricted-imports': ['error', {
-      patterns: ['*/winston', '*/bunyan'],
-      message: 'Use company logger from @company/logger'
-    }],
-    
-    // Ban specific functions
-    'no-restricted-syntax': ['error', {
-      selector: 'CallExpression[callee.name="eval"]',
-      message: 'eval() is banned for security reasons'
-    }]
-  }
-};
-```
-
-### Framework Combination
-
-```javascript
-// .eslintrc.js
-module.exports = {
+  parser: '@typescript-eslint/parser',
   extends: [
-    './rules/eslint/pci-dss.js',
-    './rules/eslint/soc2.js',     // Combine multiple frameworks
-    'airbnb-base',                 // Add style guide
-    'prettier'                     // Code formatting
+    './rules/eslint/pci-dss/pci-dss-core.js'
   ]
 };
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: "Cannot find module 'eslint-plugin-security'"
-```bash
-# Solution: Install required plugins
-npm install --save-dev eslint-plugin-security eslint-plugin-no-secrets
-```
-
-**Issue**: "Parsing error: Unexpected token"
+For JSX:
 ```javascript
-// Solution: Configure parser in .eslintrc.js
+// Add to .eslintrc.js
 module.exports = {
   parserOptions: {
-    ecmaVersion: 2022,
-    sourceType: 'module'
-  }
+    ecmaFeatures: {
+      jsx: true
+    }
+  },
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js'
+  ]
 };
 ```
 
-**Issue**: Too many false positives
-```javascript
-// Solution: Tune rules to your needs
-module.exports = {
-  extends: ['./rules/eslint/pci-dss.js'],
-  rules: {
-    'security/detect-object-injection': 'warn' // Downgrade to warning
-  }
-};
-```
+### Too Many Errors
 
-## Migrating Existing Projects
-
-### Step-by-Step Migration
-
-1. **Install ESLint and our config**
 ```bash
-npm install --save-dev eslint eslint-plugin-security
-```
+# Start with one config
+npx eslint . --config rules/eslint/pci-dss/pci-dss-core.js
 
-2. **Run in warning-only mode first**
-```javascript
-// .eslintrc.js
-module.exports = {
-  extends: ['./rules/eslint/pci-dss.js'],
-  rules: {
-    // Temporarily downgrade all errors to warnings
-    'security/detect-sql-injection': 'warn'
-  }
-};
-```
+# Only show errors (hide warnings)
+npx eslint . --quiet
 
-3. **Generate baseline report**
-```bash
-npx eslint . --format json > baseline.json
-```
-
-4. **Fix high-priority issues incrementally**
-```bash
+# Fix automatically first
 npx eslint . --fix
 ```
 
-5. **Gradually promote warnings to errors**
+## Performance Tips
 
-## Best Practices
+### Faster Scans
 
-1. **Start with Critical Rules**: Focus on ERROR-level security rules first
-2. **Use --fix Carefully**: Review auto-fixes before committing
-3. **Document Exceptions**: Always comment why rules are disabled
-4. **Regular Updates**: Update ESLint and plugins monthly
-5. **Team Alignment**: Ensure entire team uses same config
-6. **CI Enforcement**: Fail builds on errors, not warnings (initially)
+```bash
+# Enable caching (enabled by default)
+npx eslint . --cache
+
+# Scan only changed files
+git diff --name-only --diff-filter=ACM | grep -E '\.(js|ts)$' | xargs npx eslint
+
+# Exclude large directories
+npx eslint src/ --ignore-path .eslintignore
+```
+
+### Parallel Execution
+
+ESLint automatically uses multiple cores. For CI/CD:
+
+```yaml
+# GitHub Actions example
+- name: Run ESLint
+  run: npx eslint . --max-warnings 0
+  # ESLint handles parallelization automatically
+```
+
+## Combining with Other Tools
+
+ESLint works well alongside other tools:
+
+### ESLint + Semgrep
+
+```bash
+# Run both in CI/CD
+npx eslint .                               # Deep JS/TS analysis
+semgrep --config rules/semgrep/pci-dss/ .  # Multi-language patterns
+```
+
+### ESLint + Prettier
+
+```bash
+# Install
+npm install --save-dev prettier eslint-config-prettier
+
+# Update .eslintrc.js
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js',
+    'prettier'  // Disable style rules that conflict
+  ]
+};
+```
+
+## Severity Customization
+
+### Override Rule Severity
+
+```javascript
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js'
+  ],
+  rules: {
+    // Downgrade for legacy code
+    'pci-dss/no-sql-injection': 'warn',
+    
+    // Upgrade to error
+    'pci-dss/no-todo-security': 'error',
+    
+    // Disable completely (document why!)
+    'pci-dss/some-rule': 'off'
+  }
+};
+```
+
+### Environment-Specific Config
+
+```javascript
+module.exports = {
+  extends: [
+    './rules/eslint/pci-dss/pci-dss-core.js'
+  ],
+  overrides: [
+    {
+      // Relax rules for tests
+      files: ['**/*.test.js', '**/*.spec.ts'],
+      rules: {
+        'pci-dss/no-hardcoded-secrets': 'warn'
+      }
+    }
+  ]
+};
+```
 
 ## Resources
-[ESLint Documentation](https://eslint.org/docs/latest/)
-[ESLint Plugin: Security](https://github.com/eslint-community/eslint-plugin-security)
-[ESLint Plugin: No Secrets](https://github.com/nickdeis/eslint-plugin-no-secrets)
-[Report Issues](https://github.com/yourusername/compliance-rules/issues)
 
-## Framework-Specific Documentation
+**Official Docs**:
+- [ESLint Documentation](https://eslint.org/docs/)
+- [Configuring ESLint](https://eslint.org/docs/user-guide/configuring/)
+- [ESLint Rules](https://eslint.org/docs/rules/)
 
-For detailed rule explanations, see the markdown documentation:
+**Security Plugins**:
+- [eslint-plugin-security](https://github.com/nodesecurity/eslint-plugin-security)
+- [eslint-plugin-no-secrets](https://github.com/nickdeis/eslint-plugin-no-secrets)
+- [eslint-plugin-no-unsanitized](https://github.com/mozilla/eslint-plugin-no-unsanitized)
 
-- **[PCI DSS Requirements](../../frameworks/pci-dss/)** - Full requirement details
-- **[SOC 2 Requirements](../../frameworks/soc2/)** - Trust Services Criteria
-- **[HIPAA Requirements](../../frameworks/hipaa/)** - Healthcare compliance
+**This Project**:
+- [Framework Documentation](../../frameworks/) - Understand the requirements
+- [Master Rules Guide](../README.md) - Compare tools
+- [Integration Guide](../../docs/integration-guide.md) - CI/CD deep dive
 
-## Related Tools
-
-Consider combining ESLint with:
-- **[Semgrep](../semgrep/README.md)** - Multi-language security scanning
-- **[SonarQube](../sonarqube/README.md)** - Enterprise code quality platform
-- **[npm audit](https://docs.npmjs.com/cli/v8/commands/npm-audit)** - Dependency vulnerability scanning
-- **[Snyk](https://snyk.io/)** - Security scanning for dependencies
+**Support**:
+- [ESLint Community](https://eslint.org/community/)
+- [GitHub Issues](https://github.com/cj-juntunen/security-framework-linters/issues)
 
 ---
 
-**Need help?** Open an issue or discussion in the main repository.
+For framework-specific rule details, see:
+- [PCI DSS Rules](pci-dss/README.md)
