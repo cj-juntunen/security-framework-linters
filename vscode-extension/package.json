@@ -1,0 +1,283 @@
+{
+  "name": "security-framework-linters",
+  "displayName": "Security Framework Linters",
+  "description": "Automated compliance linting for PCI DSS, SOC 2, and security frameworks using Semgrep rules",
+  "version": "1.3.0",
+  "publisher": "cj-juntunen",
+  "author": {
+    "name": "CJ Juntunen",
+    "url": "https://github.com/cj-juntunen"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cj-juntunen/security-framework-linters"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "security",
+    "compliance",
+    "pci-dss",
+    "soc2",
+    "semgrep",
+    "linter",
+    "static-analysis"
+  ],
+  "activationEvents": [
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:java",
+    "onLanguage:go",
+    "onLanguage:c",
+    "onLanguage:cpp",
+    "workspaceContains:**/.semgrep.yml",
+    "workspaceContains:**/.semgrep/**"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Security Framework Linters",
+      "properties": {
+        "securityFrameworkLinters.semgrepPath": {
+          "type": "string",
+          "default": "semgrep",
+          "description": "Path to the Semgrep executable. Leave as 'semgrep' to use system PATH."
+        },
+        "securityFrameworkLinters.rulesPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to local Semgrep rules directory. Leave empty to use bundled rules."
+        },
+        "securityFrameworkLinters.enabledFrameworks": {
+          "type": "array",
+          "default": ["pci-dss", "soc2"],
+          "items": {
+            "type": "string",
+            "enum": ["pci-dss", "soc2"]
+          },
+          "description": "Which compliance frameworks to enable for scanning."
+        },
+        "securityFrameworkLinters.enabledModules": {
+          "type": "object",
+          "default": {
+            "pci-dss": ["account-data-protection", "cryptography-key-management", "access-control", "web-application-security"],
+            "soc2": ["security-common-criteria"]
+          },
+          "description": "Enabled modules per framework."
+        },
+        "securityFrameworkLinters.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run Semgrep scan when files are saved."
+        },
+        "securityFrameworkLinters.scanOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run Semgrep scan when files are opened."
+        },
+        "securityFrameworkLinters.severityFilter": {
+          "type": "array",
+          "default": ["ERROR", "WARNING"],
+          "items": {
+            "type": "string",
+            "enum": ["ERROR", "WARNING", "INFO"]
+          },
+          "description": "Which severity levels to display in the Problems panel."
+        },
+        "securityFrameworkLinters.autoInstallSemgrep": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically prompt to install Semgrep if not found."
+        },
+        "securityFrameworkLinters.enableLSP": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Language Server Protocol integration for real-time diagnostics."
+        },
+        "securityFrameworkLinters.maxJobs": {
+          "type": "number",
+          "default": 4,
+          "description": "Maximum number of parallel jobs for Semgrep scanning."
+        },
+        "securityFrameworkLinters.maxMemory": {
+          "type": "number",
+          "default": 5000,
+          "description": "Maximum memory (MB) for Semgrep processes."
+        },
+        "securityFrameworkLinters.maxTargetBytes": {
+          "type": "number",
+          "default": 1000000,
+          "description": "Maximum file size (bytes) to scan."
+        },
+        "securityFrameworkLinters.telemetryEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable anonymous usage telemetry for Semgrep."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "securityFrameworkLinters.scanFile",
+        "title": "Security Linters: Scan Current File",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "securityFrameworkLinters.scanWorkspace",
+        "title": "Security Linters: Scan Entire Workspace",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "securityFrameworkLinters.clearDiagnostics",
+        "title": "Security Linters: Clear All Diagnostics"
+      },
+      {
+        "command": "securityFrameworkLinters.showOutput",
+        "title": "Security Linters: Show Output"
+      },
+      {
+        "command": "securityFrameworkLinters.installSemgrep",
+        "title": "Security Linters: Install Semgrep"
+      },
+      {
+        "command": "securityFrameworkLinters.showRuleDoc",
+        "title": "Security Linters: Show Rule Documentation"
+      },
+      {
+        "command": "securityFrameworkLinters.restartLSP",
+        "title": "Security Linters: Restart Language Server",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "securityFrameworkLinters.ignoreViolation",
+        "title": "Security Linters: Ignore This Violation",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "securityFrameworkLinters.ignoreThisLine",
+        "title": "Security Linters: Ignore This Line",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "securityFrameworkLinters.ignoreThisFile",
+        "title": "Security Linters: Ignore Entire File"
+      },
+      {
+        "command": "securityFrameworkLinters.removeAllIgnores",
+        "title": "Security Linters: Remove All Ignore Directives"
+      },
+      {
+        "command": "securityFrameworkLinters.listAllIgnores",
+        "title": "Security Linters: List All Ignored Violations"
+      },
+      {
+        "command": "securityFrameworkLinters.nextViolation",
+        "title": "Security Linters: Go to Next Violation",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "securityFrameworkLinters.previousViolation",
+        "title": "Security Linters: Go to Previous Violation",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "securityFrameworkLinters.jumpToFirstViolation",
+        "title": "Security Linters: Jump to First Violation",
+        "icon": "$(arrow-small-up)"
+      },
+      {
+        "command": "securityFrameworkLinters.openSettingsUI",
+        "title": "Security Linters: Open Settings",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "securityFrameworkLinters.ignoreViolation",
+        "key": "ctrl+k ctrl+i",
+        "mac": "cmd+k cmd+i",
+        "when": "editorTextFocus && editorLangId =~ /python|javascript|typescript|java|go|c|cpp|ruby|php|csharp|rust|kotlin|swift/"
+      },
+      {
+        "command": "securityFrameworkLinters.scanFile",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "securityFrameworkLinters.nextViolation",
+        "key": "alt+f8",
+        "mac": "alt+f8",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "securityFrameworkLinters.previousViolation",
+        "key": "shift+alt+f8",
+        "mac": "shift+alt+f8",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "securityFrameworkLinters.jumpToFirstViolation",
+        "key": "ctrl+alt+f8",
+        "mac": "cmd+alt+f8",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "securityFrameworkLinters.scanFile",
+          "when": "editorLangId =~ /python|javascript|typescript|java|go|c|cpp/",
+          "group": "9_security"
+        },
+        {
+          "command": "securityFrameworkLinters.ignoreViolation",
+          "when": "editorTextFocus && editorLangId =~ /python|javascript|typescript|java|go|c|cpp|ruby|php|csharp|rust|kotlin|swift/",
+          "group": "9_security"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "securityFrameworkLinters.scanFile",
+          "when": "editorLangId =~ /python|javascript|typescript|java|go|c|cpp/",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "deploy": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@types/js-yaml": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11",
+    "js-yaml": "^4.1.0"
+  }
+}
